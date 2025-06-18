@@ -111,3 +111,9 @@ VALUES
 ('Registro de Incidencias', 'Procedimiento para registrar faltas o retardos', 2,
  (SELECT UsuarioID FROM Usuarios WHERE Email = 'ana.personal@institucion.edu.mx'));
 
+ ALTER TABLE Procedimientos
+ADD Estado NVARCHAR(50) DEFAULT 'Elaborado',
+    CreadoPor INT,
+    ModificadoPor INT,
+    FOREIGN KEY (CreadoPor) REFERENCES Usuarios(UsuarioID),
+    FOREIGN KEY (ModificadoPor) REFERENCES Usuarios(UsuarioID);
