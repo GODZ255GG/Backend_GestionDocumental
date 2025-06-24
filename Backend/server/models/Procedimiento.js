@@ -2,14 +2,6 @@ const sql = require('mssql');
 const { getDb } = require('../config/database');
 
 class Procedimiento {
-  /**
-   * Crea un nuevo procedimiento en la base de datos.
-   * @param {string} titulo - Título del procedimiento.
-   * @param {string} descripcion - Descripción del procedimiento.
-   * @param {number} subprocesoId - ID del subproceso al que pertenece.
-   * @param {number} responsableId - ID del usuario responsable.
-   * @returns {number} - ID del procedimiento creado.
-   */
   static async crear(titulo, descripcion, subprocesoId, responsableId) {
     const db = getDb();
     const result = await db.request()
@@ -25,11 +17,6 @@ class Procedimiento {
     return result.recordset[0].id;
   }
 
-  /**
-   * Obtiene un procedimiento por su ID.
-   * @param {number} id - ID del procedimiento.
-   * @returns {object} - Datos del procedimiento o undefined si no existe.
-   */
   static async obtenerPorId(id) {
     const db = getDb();
     const result = await db.request()
@@ -43,10 +30,6 @@ class Procedimiento {
     return result.recordset[0];
   }
 
-  /**
-   * Obtiene todos los procedimientos.
-   * @returns {array} - Lista de procedimientos.
-   */
   static async obtenerTodos() {
     const db = getDb();
     const result = await db.request()
@@ -58,13 +41,6 @@ class Procedimiento {
     return result.recordset;
   }
 
-  /**
-   * Actualiza un procedimiento existente.
-   * @param {number} id - ID del procedimiento a actualizar.
-   * @param {string} titulo - Nuevo título.
-   * @param {string} descripcion - Nueva descripción.
-   * @param {number} subprocesoId - Nuevo ID del subproceso.
-   */
   static async actualizar(id, titulo, descripcion, subprocesoId) {
     const db = getDb();
     await db.request()
@@ -79,15 +55,31 @@ class Procedimiento {
       `);
   }
 
-  /**
-   * Elimina un procedimiento por su ID.
-   * @param {number} id - ID del procedimiento a eliminar.
-   */
   static async eliminar(id) {
     const db = getDb();
     await db.request()
       .input('id', sql.Int, id)
       .query('DELETE FROM Procedimientos WHERE ProcedimientoID = @id');
+  }
+
+  static async obtenerPorDireccion(direccionId) {
+    if (!direccionId || isNaN(direccionId) || !Number.isInteger(Number(direccionId))) {
+      throw new Error('ID de dirección inválido');
+    }
+    const db = getDb();
+    const result = await db.request()
+      .input('direccionId', sql.Int, direccionId)
+      .query(`
+      SELECT 
+        p.*,
+        u.Nombre AS ResponsableNombre,
+        s.Nombre AS SubprocesoNombre
+      FROM Procedimientos p
+      JOIN Usuarios u ON p.ResponsableID = u.UsuarioID
+      JOIN Subprocesos s ON p.SubprocesoID = s.SubprocesoID
+      WHERE s.DireccionID = @direccionId
+    `);
+    return result.recordset;
   }
 }
 

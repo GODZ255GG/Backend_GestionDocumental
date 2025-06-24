@@ -8,6 +8,14 @@ const direccionRoutes = require('./routes/direccionRoutes');
 const app = express();
 
 // Middlewares
+// Configuración CORS para desarrollo
+const corsOptions = {
+    origin: 'http://localhost:3000', // Ajusta según tu entorno de desarrollo
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204
+};
+
 app.use(cors());
 app.use(bodyParser.json());
 

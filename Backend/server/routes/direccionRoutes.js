@@ -1,24 +1,21 @@
 const express = require('express');
-const router = express.Router();
-const direccionController = require('../controllers/direccionController');
+const { check } = require('express-validator');
 const { authenticateJWT } = require('../middleware/auth');
+const direccionController = require('../controllers/direccionController');
 
-// Rutas para manejar operaciones CRUD de direcciones
-// Todas las rutas requieren autenticación mediante JWT
+const router = express.Router();
+const validarDireccion = [
+  check('nombre').notEmpty().withMessage('El nombre es requerido'),
+  check('descripcion').optional(),
+  check('jefeId').optional().isInt().withMessage('El jefeId debe ser un número'),
+  check('secretaria').optional()
+];
 
-// Obtener todas las direcciones
-router.get('/', authenticateJWT, direccionController.obtenerTodasDirecciones);
-
-// Obtener una dirección específica por ID
-router.get('/:id', authenticateJWT, direccionController.obtenerDireccionPorId);
-
-// Crear una nueva dirección
-router.post('/', authenticateJWT, direccionController.crearDireccion);
-
-// Actualizar una dirección existente
-router.put('/:id', authenticateJWT, direccionController.actualizarDireccion);
-
-// Eliminar una dirección
-router.delete('/:id', authenticateJWT, direccionController.eliminarDireccion);
+// Rutas
+router.get('/', authenticateJWT, direccionController.obtenerTodas);
+router.get('/:id', authenticateJWT, direccionController.obtenerPorId);
+router.post('/', authenticateJWT, validarDireccion, direccionController.crear);
+router.put('/:id', authenticateJWT, validarDireccion, direccionController.actualizar);
+router.delete('/:id', authenticateJWT, direccionController.eliminar);
 
 module.exports = router;

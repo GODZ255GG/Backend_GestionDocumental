@@ -8,5 +8,6 @@ router.get('/:id', authenticateJWT, procedimientoController.obtenerProcedimiento
 router.get('/', authenticateJWT, procedimientoController.obtenerTodosProcedimientos);
 router.put('/:id', authenticateJWT, procedimientoController.actualizarProcedimiento);
 router.delete('/:id', authenticateJWT, procedimientoController.eliminarProcedimiento);
+router.get('/por-direccion/:id', authenticateJWT, procedimientoController.obtenerProcedimientosPorDireccion);
 
 module.exports = router;
