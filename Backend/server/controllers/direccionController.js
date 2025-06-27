@@ -2,6 +2,47 @@ const { validationResult } = require('express-validator');
 const Direccion = require('../models/Direcciones');
 
 const direccionesController = {
+
+  obtenerStatsTotales: async (req, res) => {
+    try {
+      const stats = await Direccion.obtenerStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error al obtener estadísticas totales:', error);
+      res.status(500).json({
+        message: 'Error al obtener estadísticas',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
+  /**
+   * Obtiene estadísticas detalladas
+   */
+  obtenerStatsDetalladas: async (req, res) => {
+    try {
+      const direcciones = await Direccion.obtenerTodos();
+      const stats = await Direccion.obtenerStats();
+
+      res.json({
+        totals: stats,
+        details: direcciones.map(d => ({
+          id: d.DireccionID,
+          nombre: d.Nombre,
+          miembros: d.miembros,
+          subprocesos: d.totalSubprocesos,
+          procedimientos: d.totalProcedimientos,
+          estado: d.Activo ? 'Activa' : 'Inactiva'
+        }))
+      });
+    } catch (error) {
+      console.error('Error al obtener estadísticas detalladas:', error);
+      res.status(500).json({
+        message: 'Error al obtener estadísticas detalladas',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
   /**
    * Obtiene todas las direcciones
    */
@@ -21,7 +62,13 @@ const direccionesController = {
   obtenerPorId: async (req, res) => {
     try {
       const { id } = req.params;
-      const direccion = await Direccion.obtenerPorId(id);
+
+      // Validación del ID
+      if (!id || isNaN(id)) {
+        return res.status(400).json({ message: 'ID de dirección no válido' });
+      }
+
+      const direccion = await Direccion.obtenerPorId(parseInt(id));
 
       if (!direccion) {
         return res.status(404).json({ message: 'Dirección no encontrada' });
@@ -29,8 +76,11 @@ const direccionesController = {
 
       res.json(direccion);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error al obtener la dirección' });
+      console.error('Error al obtener dirección por ID:', error);
+      res.status(500).json({
+        message: 'Error al obtener la dirección',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   },
 
@@ -46,10 +96,10 @@ const direccionesController = {
     try {
       const { nombre, descripcion, jefeId, secretaria } = req.body;
       const id = await Direccion.crear(nombre, descripcion, jefeId, secretaria);
-      
-      res.status(201).json({ 
+
+      res.status(201).json({
         message: 'Dirección creada exitosamente',
-        direccionId: id 
+        direccionId: id
       });
     } catch (error) {
       console.error(error);

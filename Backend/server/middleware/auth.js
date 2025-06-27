@@ -16,7 +16,6 @@ function authenticateJWT(req, res, next) {
       userId: user.userId,
       email: user.email,
       rol: user.rol,
-      // Conversión explícita a número (o null)
       direccionId: user.direccionId !== null ? Number(user.direccionId) : null,
       direccionNombre: user.direccionNombre
     };
@@ -26,4 +25,4 @@ function authenticateJWT(req, res, next) {
   });
 }
 
-module.exports = { authenticateJWT };
+module.exports = { authenticateJWT};
