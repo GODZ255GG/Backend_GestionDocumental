@@ -1,59 +1,77 @@
 const express = require('express');
-
-
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { getDb } = require('../config/database');
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const db = await getDb();
+    console.log('Intento de login con:', email); // Log para depuración
+    
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email y contraseña son requeridos' });
+    }
 
-    const [user] = await db.query(
+    const db = await getDb();
+    const [users] = await db.query(
       `SELECT 
-        u.UserID,
-        u.Name,
-        u.Email,
+        u.UserID as id,
+        u.Name as nombre,
+        u.Email as email,
         u.PasswordHash,
-        u.Role,
-        u.DepartmentID,
-        d.Name AS DepartmentName 
+        u.Role as rol,
+        u.DepartmentID as direccionId,
+        d.Name as direccionNombre,
+        u.IsActive
       FROM Users u
       LEFT JOIN Departments d ON u.DepartmentID = d.DepartmentID
       WHERE u.Email = ?`,
       [email]
     );
 
-    if (!user){
-      return res.status(401).json({ message: 'Invalid credentials' });
+    console.log('Usuario encontrado:', users[0]); // Log para depuración
+
+    if (users.length === 0) {
+      return res.status(401).json({ message: 'Usuario no encontrado' });
     }
+
+    const user = users[0];
+    
+    if (!user.IsActive) {
+      return res.status(401).json({ message: 'Usuario inactivo' });
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.PasswordHash);
+    console.log('Resultado de comparación de contraseña:', passwordMatch); // Log para depuración
+    
+    if (!passwordMatch) {
+      return res.status(401).json({ message: 'Contraseña incorrecta' });
+    }
+
+    // Eliminar campos sensibles antes de responder
+    delete user.PasswordHash;
+    delete user.IsActive;
 
     const token = jwt.sign(
       {
-        userId: user.UserID,
-        email: user.Email,
-        role: user.Role,
-        departmentId: user.DepartmentID || null,
-        departmentName: user.DepartmentName
+        userId: user.id,
+        email: user.email,
+        rol: user.rol,
+        direccionId: user.direccionId,
+        direccionNombre: user.direccionNombre
       },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '1h' }
     );
 
     res.json({
       token,
-      user: {
-        name: user.Name,
-        email: user.Email,
-        role: user.Role,
-        departmentId: user.DepartmentID || null,
-        departmentName: user.DepartmentName
-      }
+      user
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error en login:', error);
+    res.status(500).json({ message: 'Error en el servidor', error: error.message });
   }
 });
 
