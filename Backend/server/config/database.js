@@ -1,33 +1,31 @@
-const sql = require('mssql');
+const mysql = require('mysql2/promise');
 
 const dbConfig = {
+  host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER,
-  port: parseInt(process.env.DB_PORT), // ← importante convertir a número
   database: process.env.DB_NAME,
-  options: {
-    encrypt: true,
-    trustServerCertificate: true
-  }
+  port: parseInt(process.env.DB_PORT) || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 };
-
 
 let pool;
 
 async function connectToDatabase() {
   try {
-    pool = await sql.connect(dbConfig);
-    console.log('Conectado a SQL Server');
+    pool = mysql.createPool(dbConfig);
+    console.log('Connected to MySQL database');
     return pool;
   } catch (err) {
-    console.error('Error de conexión a la base de datos:', err);
+    console.error('Database connection error:', err);
     throw err;
   }
 }
 
 function getDb() {
-  if (!pool) throw new Error('No se ha establecido conexión a la base de datos');
+  if (!pool) throw new Error('Database connection not established');
   return pool;
 }
 

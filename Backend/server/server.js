@@ -4,14 +4,14 @@ const { connectToDatabase } = require('./config/database');
 
 const PORT = process.env.PORT || 3000;
 
-// Conectar a la base de datos y luego iniciar el servidor
+// Connect to database and then start server
 connectToDatabase()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Servidor corriendo en http://localhost:${PORT}`);
+      console.log(`Server running on http://localhost:${PORT}`);
     });
   })
   .catch(error => {
-    console.error('Error al conectar a la base de datos:', error);
+    console.error('Database connection error:', error);
     process.exit(1);
   });

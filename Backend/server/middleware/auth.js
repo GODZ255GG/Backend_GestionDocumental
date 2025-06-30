@@ -1,28 +1,36 @@
 const jwt = require('jsonwebtoken');
 
 function authenticateJWT(req, res, next) {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
-    return res.status(401).json({ message: 'Token no proporcionado' });
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Token no proporcionado o formato incorrecto' });
   }
 
   const token = authHeader.split(' ')[1];
+  
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      console.error('JWT Error:', err.name);
+      const message = err.name === 'TokenExpiredError' 
+        ? 'Token expirado' 
+        : 'Token inválido';
+      return res.status(403).json({ message });
+    }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Token inválido o expirado' });
-
+    // Mapeo flexible de propiedades
     req.user = {
-      userId: user.userId,
-      email: user.email,
-      rol: user.rol,
-      direccionId: user.direccionId !== null ? Number(user.direccionId) : null,
-      direccionNombre: user.direccionNombre
+      userId: decoded.userId || decoded.UserID,
+      email: decoded.email || decoded.Email,
+      rol: decoded.rol || decoded.role || decoded.Rol,
+      direccionId: decoded.direccionId ? Number(decoded.direccionId) : 
+                 decoded.DireccionID ? Number(decoded.DireccionID) : null,
+      direccionNombre: decoded.direccionNombre || decoded.DireccionNombre
     };
 
-    console.log('User after auth:', req.user); // Debug
+    console.log('Usuario autenticado:', req.user);
     next();
   });
 }
 
-module.exports = { authenticateJWT};
+module.exports = { authenticateJWT };
