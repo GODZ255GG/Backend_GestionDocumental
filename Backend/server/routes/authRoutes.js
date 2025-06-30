@@ -1,6 +1,6 @@
-const sql = require('mssql');
 const express = require('express');
-const bcrypt = require('bcryptjs');
+
+
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../config/database');
 const router = express.Router();
@@ -8,38 +8,34 @@ const router = express.Router();
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const db = getDb();
+    const db = await getDb();
 
-    const result = await db.request()
-      .input('email', sql.NVarChar, email)
-      .query(`
-        SELECT 
-          u.UsuarioID,
-          u.Nombre,
-          u.Email,
-          u.PasswordHash,
-          u.Rol,
-          u.DireccionID,
-          d.Nombre AS DireccionNombre 
-        FROM Usuarios u
-        LEFT JOIN Direcciones d ON u.DireccionID = d.DireccionID
-        WHERE u.Email = @email
-      `);
+    const [user] = await db.query(
+      `SELECT 
+        u.UserID,
+        u.Name,
+        u.Email,
+        u.PasswordHash,
+        u.Role,
+        u.DepartmentID,
+        d.Name AS DepartmentName 
+      FROM Users u
+      LEFT JOIN Departments d ON u.DepartmentID = d.DepartmentID
+      WHERE u.Email = ?`,
+      [email]
+    );
 
-    const user = result.recordset[0];
-    console.log('User from DB:', user); // Depuración
-
-    if (!user || !bcrypt.compareSync(password, user.PasswordHash)) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
+    if (!user){
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const token = jwt.sign(
       {
-        userId: user.UsuarioID,
+        userId: user.UserID,
         email: user.Email,
-        rol: user.Rol,
-        direccionId: user.DireccionID || null,
-        direccionNombre: user.DireccionNombre
+        role: user.Role,
+        departmentId: user.DepartmentID || null,
+        departmentName: user.DepartmentName
       },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
@@ -48,16 +44,16 @@ router.post('/login', async (req, res) => {
     res.json({
       token,
       user: {
-        nombre: user.Nombre,
+        name: user.Name,
         email: user.Email,
-        rol: user.Rol,
-        direccionId: user.DireccionID || null,
-        direccionNombre: user.DireccionNombre
+        role: user.Role,
+        departmentId: user.DepartmentID || null,
+        departmentName: user.DepartmentName
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error en el servidor' });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
