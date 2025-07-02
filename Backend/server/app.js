@@ -5,6 +5,7 @@ const authRoutes = require('./routes/authRoutes');
 const procedureRoutes = require('./routes/procedureRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const userRoutes = require('./routes/userRoutes');
+const documentRoutes = require('./routes/documentRoutes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/procedures', procedureRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/documents',documentRoutes);
 
 // Test route
 app.get('/', (req, res) => {
