@@ -66,17 +66,23 @@ CREATE TABLE Procedures (
 );
 
 -- Finally create Documents (depends on Procedures)
-CREATE TABLE Documents (
-    DocumentID INT PRIMARY KEY AUTO_INCREMENT,
-    Name VARCHAR(200) NOT NULL,
-    FilePath VARCHAR(500) NOT NULL,
-    Type VARCHAR(50),
-    Size INT,
-    ProcedureID INT NOT NULL,
-    Version VARCHAR(20),
-    UploadDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (ProcedureID) REFERENCES Procedures(ProcedureID)
+CREATE TABLE documentos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(255) NOT NULL,
+  archivo LONGBLOB NOT NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+CREATE TABLE document_versions (
+  version_id INT AUTO_INCREMENT PRIMARY KEY,
+  documento_id INT NOT NULL,
+  archivo LONGBLOB NOT NULL,
+  version_number INT NOT NULL,
+  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (documento_id) REFERENCES documentos(id)
+);
+
+
 
 -- Insert initial data (with circular dependency workaround)
 -- First insert Users without DepartmentID

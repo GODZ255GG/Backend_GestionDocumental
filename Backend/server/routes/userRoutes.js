@@ -2,6 +2,7 @@ const express = require('express');
 const { check } = require('express-validator');
 const { authenticateJWT } = require('../middleware/auth');
 const userController = require('../controllers/userController');
+const User = require('../models/User');
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.get('/:id', authenticateJWT, userController.getById);
 router.post('/', authenticateJWT, validateUser, userController.create);
 router.put('/:id', authenticateJWT, validateUser, userController.update);
 router.delete('/:id', authenticateJWT, userController.deactivate);
+router.get('/non-department-heads', authenticateJWT, userController.getNonDepartmentHeads);
 
 module.exports = router;
