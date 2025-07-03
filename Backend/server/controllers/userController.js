@@ -110,6 +110,19 @@ const userController = {
       console.error(error);
       res.status(500).json({ message: 'Error deactivating user' });
     }
+  },
+
+  getNonDepartmentHeads: async (req, res) => {
+    try {
+      const users = await User.getNonDepartmentHeads();
+      if (!users || users.length === 0) {
+        return res.status(404).json({ message: 'No available users found' });
+      }
+      res.json(users);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error getting non department heads' });
+    }
   }
 };
 

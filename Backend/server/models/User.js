@@ -102,6 +102,14 @@ class User {
     const isValid = await bcrypt.compare(password, user.PasswordHash);
     return isValid ? user : null;
   }
+
+  static async getAll() {
+    const db = await getDb();
+    const [rows] = await db.query(
+      'SELECT UserID, Name, Email, Role, DepartmentID, IsActive FROM Users WHERE IsActive = TRUE'
+    );
+    return rows;
+  }
 }
 
 module.exports = User;
