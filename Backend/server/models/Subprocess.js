@@ -111,6 +111,24 @@ class Subprocess {
             throw error;
         }
     }
+
+    static async getProceduresBySubprocess(subprocessId) {
+        try {
+            const idNum = await this.validateId(subprocessId);
+            const db = await getDb();
+            const [rows] = await db.query(
+                `SELECT p.*, u.Name AS ResponsibleName 
+             FROM Procedures p
+             JOIN Users u ON p.ResponsibleID = u.UserID
+             WHERE p.SubprocessID = ?`,
+                [idNum]
+            );
+            return rows;
+        } catch (error) {
+            console.error('Error in getProceduresBySubprocess:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = Subprocess;

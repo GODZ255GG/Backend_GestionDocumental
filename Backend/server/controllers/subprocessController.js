@@ -105,6 +105,21 @@ const subprocessController = {
                 error: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }
+    },
+
+    getProcedures: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const procedures = await Subprocess.getProceduresBySubprocess(id);
+
+            res.json(procedures);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({
+                message: 'Error getting procedures for subprocess',
+                error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
     }
 };
 

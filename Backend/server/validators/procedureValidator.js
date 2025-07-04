@@ -1,9 +1,19 @@
-const { body } = require('express-validator');
+// validators/procedureValidator.js
+const { body, validationResult } = require('express-validator');
 
-const crearProcedimientoValidator = [
-  body('title').notEmpty().withMessage('El título es requerido'),
-  body('subprocessId').isInt().withMessage('Subproceso inválido'),
-  body('description').optional().isString()
+const createProcedureValidator = [
+  body('title').notEmpty().withMessage('Title is required'),
+  body('description').optional(),
+  body('subprocessId').isInt().withMessage('Subprocess ID must be an integer'),
+  body('status').isIn(['Draft', 'Active', 'Pending', 'Archived']).withMessage('Invalid status'),
+  
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  }
 ];
 
-module.exports = { crearProcedimientoValidator };
+module.exports = { createProcedureValidator };

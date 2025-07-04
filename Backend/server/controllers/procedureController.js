@@ -51,8 +51,8 @@ const procedureController = {
   updateProcedure: async (req, res) => {
     try {
       const { id } = req.params;
-      const { title, description, subprocessId } = req.body;
-      await Procedure.update(id, title, description, subprocessId, req.user.userId);
+      const { title, description, subprocessId, status } = req.body;
+      await Procedure.update(id, title, description, subprocessId, req.user.userId, status);
       res.json({ message: 'Procedure updated successfully' });
     } catch (error) {
       res.status(400).json({ message: error.message });
@@ -72,7 +72,7 @@ const procedureController = {
   getProceduresByDepartment: async (req, res) => {
     try {
       const departmentId = Number(req.params.id);
-      
+
       if (isNaN(departmentId) || !Number.isInteger(departmentId)) {
         return res.status(400).json({
           success: false,
