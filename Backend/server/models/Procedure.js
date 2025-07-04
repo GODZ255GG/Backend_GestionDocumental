@@ -47,13 +47,13 @@ class Procedure {
     return rows;
   }
 
-  static async update(id, title, description, subprocessId, modifiedBy) {
+  static async update(id, title, description, subprocessId, modifiedBy, status) {
     const db = await getDb();
     await db.query(
       `UPDATE Procedures 
-       SET Title = ?, Description = ?, SubprocessID = ?, ModifiedBy = ?
-       WHERE ProcedureID = ?`,
-      [title, description, subprocessId, modifiedBy, id]
+     SET Title = ?, Description = ?, SubprocessID = ?, ModifiedBy = ?, Status = ?
+     WHERE ProcedureID = ?`,
+      [title, description, subprocessId, modifiedBy, status, id]
     );
   }
 

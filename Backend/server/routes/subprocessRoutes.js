@@ -16,6 +16,7 @@ const validateSubprocess = [
 router.get('/', authenticateJWT, subprocessController.getAll);
 router.get('/department/:departmentId', authenticateJWT, subprocessController.getByDepartment);
 router.get('/:id', authenticateJWT, subprocessController.getById);
+router.get('/:id/procedures', authenticateJWT, subprocessController.getProcedures);
 router.post('/', authenticateJWT, validateSubprocess, subprocessController.create);
 router.put('/:id', authenticateJWT, validateSubprocess, subprocessController.update);
 router.delete('/:id', authenticateJWT, subprocessController.delete);

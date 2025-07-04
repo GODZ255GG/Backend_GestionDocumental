@@ -2,6 +2,7 @@
 CREATE DATABASE IF NOT EXISTS DocumentManagement;
 USE DocumentManagement;
 
+
 -- Table cleanup (if needed) - Note: reverse order of creation
 DROP TABLE IF EXISTS Documents;
 DROP TABLE IF EXISTS Procedures;
@@ -17,7 +18,9 @@ CREATE TABLE Departments (
     HeadID INT NULL,
     Secretariat VARCHAR(100),
     IsActive BOOLEAN DEFAULT TRUE,
-    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    LastModified DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (HeadID) REFERENCES Users(UserID)
 );
 
 -- Then create Users (since Departments exists now)
@@ -54,7 +57,7 @@ CREATE TABLE Procedures (
     Description TEXT,
     SubprocessID INT NOT NULL,
     ResponsibleID INT NOT NULL,
-    Status VARCHAR(50) DEFAULT 'Draft',
+    Status ENUM('Draft', 'Active', 'Pending', 'Archived') DEFAULT 'Draft',
     CreatedBy INT,
     ModifiedBy INT,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
