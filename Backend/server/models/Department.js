@@ -9,12 +9,12 @@ class Department {
     return idNum;
   }
 
-  static async create(name, description, headId, secretariat) {
+  static async create(name, description, headId, secretariatId) {
     const db = await getDb();
     const [result] = await db.query(
-      `INSERT INTO Departments (Name, Description, HeadID, Secretariat)
-       VALUES (?, ?, ?, ?)`,
-      [name, description, headId || null, secretariat]
+      `INSERT INTO Departments (Name, Description, HeadID, SecretariatID)
+      VALUES (?, ?, ?, ?)`,
+      [name, description, headId || null, secretariatId]
     );
     return result.insertId;
   }
@@ -25,9 +25,9 @@ class Department {
       const db = await getDb();
       const [rows] = await db.query(
         `SELECT d.*, u.Name AS HeadName 
-         FROM Departments d
-         LEFT JOIN Users u ON d.HeadID = u.UserID
-         WHERE d.DepartmentID = ?`,
+          FROM Departments d
+          LEFT JOIN Users u ON d.HeadID = u.UserID
+          WHERE d.DepartmentID = ?`,
         [idNum]
       );
       return rows[0];
@@ -47,10 +47,10 @@ class Department {
           (SELECT COUNT(*) FROM Users WHERE DepartmentID = d.DepartmentID) AS memberCount,
           (SELECT COUNT(*) FROM Subprocesses WHERE DepartmentID = d.DepartmentID) AS subprocessCount,
           (SELECT COUNT(*) FROM Procedures p 
-           JOIN Subprocesses s ON p.SubprocessID = s.SubprocessID 
-           WHERE s.DepartmentID = d.DepartmentID) AS procedureCount
-         FROM Departments d
-         LEFT JOIN Users u ON d.HeadID = u.UserID`
+            JOIN Subprocesses s ON p.SubprocessID = s.SubprocessID 
+            WHERE s.DepartmentID = d.DepartmentID) AS procedureCount
+          FROM Departments d
+          LEFT JOIN Users u ON d.HeadID = u.UserID`
       );
       return rows;
     } catch (error) {
@@ -59,20 +59,21 @@ class Department {
     }
   }
 
-  static async update(id, name, description, headId, secretariat) {
+  static async update(id, name, description, headId, secretariatId, isActive) {
     try {
       const idNum = await this.validateId(id);
       const db = await getDb();
       await db.query(
         `UPDATE Departments
-         SET 
-           Name = ?, 
-           Description = ?, 
-           HeadID = ?, 
-           Secretariat = ?,
-           LastModified = CURRENT_TIMESTAMP()
-         WHERE DepartmentID = ?`,
-        [name, description, headId || null, secretariat, idNum]
+      SET 
+        Name = ?, 
+        Description = ?, 
+        HeadID = ?, 
+        SecretariatID = ?,
+        IsActive = ?,
+        LastModified = CURRENT_TIMESTAMP()
+      WHERE DepartmentID = ?`,
+        [name, description, headId || null, secretariatId, isActive, idNum]
       );
     } catch (error) {
       console.error('Error in update:', error);
@@ -81,13 +82,70 @@ class Department {
   }
 
   static async delete(id) {
+    let connection;
     try {
       const idNum = await this.validateId(id);
-      const db = await getDb();
-      await db.query('DELETE FROM Departments WHERE DepartmentID = ?', [idNum]);
+      connection = await getDb().getConnection();
+
+      await connection.beginTransaction();
+
+      // 1. Verificar si el departamento existe
+      const [departmentRows] = await connection.query(
+        'SELECT * FROM Departments WHERE DepartmentID = ?',
+        [idNum]
+      );
+
+      if (departmentRows.length === 0) {
+        throw new Error('Department not found');
+      }
+
+      // 2. Obtener todos los subprocesos del departamento
+      const [subprocesses] = await connection.query(
+        'SELECT SubprocessID FROM Subprocesses WHERE DepartmentID = ?',
+        [idNum]
+      );
+
+      // 3. Eliminar procedimientos relacionados
+      if (subprocesses.length > 0) {
+        const subprocessIds = subprocesses.map(s => s.SubprocessID);
+        await connection.query(
+          'DELETE FROM Procedures WHERE SubprocessID IN (?)',
+          [subprocessIds]
+        );
+      }
+
+      // 4. Eliminar subprocesos
+      await connection.query(
+        'DELETE FROM Subprocesses WHERE DepartmentID = ?',
+        [idNum]
+      );
+
+      // 5. Quitar referencia a usuarios
+      await connection.query(
+        'UPDATE Users SET DepartmentID = NULL WHERE DepartmentID = ?',
+        [idNum]
+      );
+
+      // 6. Quitar referencia al jefe
+      await connection.query(
+        'UPDATE Departments SET HeadID = NULL WHERE DepartmentID = ?',
+        [idNum]
+      );
+
+      // 7. Finalmente eliminar el departamento
+      await connection.query(
+        'DELETE FROM Departments WHERE DepartmentID = ?',
+        [idNum]
+      );
+
+      await connection.commit();
+      return true;
     } catch (error) {
+      if (connection) await connection.rollback();
       console.error('Error in delete:', error);
       throw error;
+    } finally {
+      if (connection) connection.release();
     }
   }
 
@@ -100,8 +158,8 @@ class Department {
       const [headsResult] = await db.query('SELECT COUNT(*) AS heads FROM Departments WHERE HeadID IS NOT NULL');
       const [proceduresResult] = await db.query(
         `SELECT COUNT(*) AS procedures 
-         FROM Procedures p
-         JOIN Subprocesses s ON p.SubprocessID = s.SubprocessID`
+          FROM Procedures p
+          JOIN Subprocesses s ON p.SubprocessID = s.SubprocessID`
       );
 
       return {
@@ -112,6 +170,19 @@ class Department {
       };
     } catch (error) {
       console.error('Error in getStats:', error);
+      throw error;
+    }
+  }
+
+  static async updateUserDepartment(userId, departmentId) {
+    try {
+      const db = await getDb();
+      await db.query(
+        'UPDATE Users SET DepartmentID = ? WHERE UserID = ?',
+        [departmentId, userId]
+      );
+    } catch (error) {
+      console.error('Error updating user department:', error);
       throw error;
     }
   }

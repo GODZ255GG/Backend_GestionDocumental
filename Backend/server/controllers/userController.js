@@ -112,16 +112,39 @@ const userController = {
     }
   },
 
-  getNonDepartmentHeads: async (req, res) => {
+  getAvailableUsers: async (req, res) => {
     try {
-      const users = await User.getNonDepartmentHeads();
-      if (!users || users.length === 0) {
-        return res.status(404).json({ message: 'No available users found' });
+      // Verificar permisos del usuario autenticado
+      if (!req.user.canManageProcedures && !req.user.isDepartmentHead) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a esta información'
+        });
       }
-      res.json(users);
+
+      const availableUsers = await User.getAvailableForDepartmentAssignment();
+
+      if (!availableUsers || availableUsers.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          message: 'No hay usuarios disponibles para asignación'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: availableUsers,
+        count: availableUsers.length
+      });
+
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error getting non department heads' });
+      console.error('Error getting available users:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener usuarios disponibles',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
     }
   }
 };
