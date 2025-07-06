@@ -84,6 +84,11 @@ const departmentController = {
       const { name, description, headId, secretariat } = req.body;
       const id = await Department.create(name, description, headId, secretariat);
 
+      // Si se asignó un jefe, actualizar su departamento
+      if (headId) {
+        await Department.updateUserDepartment(headId, id);
+      }
+
       res.status(201).json({
         message: 'Department created successfully',
         departmentId: id
@@ -110,6 +115,12 @@ const departmentController = {
       }
 
       await Department.update(id, name, description, headId, secretariat);
+
+      // Si se asignó un jefe, actualizar su departamento
+      if (headId) {
+        await Department.updateUserDepartment(headId, id);
+      }
+
       res.json({ message: 'Department updated successfully' });
     } catch (error) {
       console.error(error);

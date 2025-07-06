@@ -1,7 +1,6 @@
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
-const path = require('path');
 const { getDb } = require('../config/database');
 
 const router = express.Router();
@@ -15,14 +14,14 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const archivoBuffer = fs.readFileSync(req.file.path);
 
-    await db.query(
-      'INSERT INTO documentos (nombre, archivo) VALUES (?, ?)',
+    const [result] = await db.query(
+      'INSERT INTO Documents (Name, File) VALUES (?, ?)',
       [req.file.originalname, archivoBuffer]
     );
 
     fs.unlinkSync(req.file.path);
 
-    res.json({ message: 'Archivo Word guardado como BLOB!' });
+    res.json({ message: 'Archivo Word guardado como BLOB!', documentId: result.insertId });
   } catch (error) {
     console.error(error);
     res.status(500).send('Error al guardar archivo');
@@ -36,7 +35,7 @@ router.get('/download/:id', async (req, res) => {
 
     const db = await getDb();
     const [rows] = await db.query(
-      'SELECT nombre, archivo FROM documentos WHERE id = ?',
+      'SELECT Name, File FROM Documents WHERE DocumentID = ?',
       [id]
     );
 
@@ -46,42 +45,42 @@ router.get('/download/:id', async (req, res) => {
 
     const doc = rows[0];
 
-    res.setHeader('Content-Disposition', `attachment; filename=${doc.nombre}`);
+    res.setHeader('Content-Disposition', `attachment; filename=${doc.Name}`);
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     );
 
-    res.send(doc.archivo);
+    res.send(doc.File);
   } catch (error) {
     console.error(error);
     res.status(500).send('Error al descargar archivo');
   }
 });
 
-router.post('/upload-version/:documentoId', upload.single('file'), async (req, res) => {
+router.post('/upload-version/:documentId', upload.single('file'), async (req, res) => {
   try {
-    const documentoId = req.params.documentoId;
+    const documentId = req.params.documentId;
     const db = await getDb();
 
-    const [docRows] = await db.query('SELECT id FROM documentos WHERE id = ?', [documentoId]);
+    const [docRows] = await db.query('SELECT DocumentID FROM Documents WHERE DocumentID = ?', [documentId]);
     if (!docRows.length) {
       fs.unlinkSync(req.file.path);
       return res.status(404).send('Documento no encontrado');
     }
 
     const [versionRows] = await db.query(
-      `SELECT MAX(version_number) AS lastVersion FROM document_versions WHERE documento_id = ?`,
-      [documentoId]
+      `SELECT MAX(VersionNumber) AS lastVersion FROM DocumentVersions WHERE DocumentID = ?`,
+      [documentId]
     );
     const lastVersion = versionRows[0].lastVersion || 0;
 
     const archivoBuffer = fs.readFileSync(req.file.path);
 
     await db.query(
-      `INSERT INTO document_versions (documento_id, archivo, version_number)
+      `INSERT INTO DocumentVersions (DocumentID, File, VersionNumber)
        VALUES (?, ?, ?)`,
-      [documentoId, archivoBuffer, lastVersion + 1]
+      [documentId, archivoBuffer, lastVersion + 1]
     );
 
     fs.unlinkSync(req.file.path);
@@ -93,17 +92,17 @@ router.post('/upload-version/:documentoId', upload.single('file'), async (req, r
   }
 });
 
-router.get('/document/:documentoId/versions', async (req, res) => {
+router.get('/document/:documentId/versions', async (req, res) => {
   try {
-    const documentoId = req.params.documentoId;
+    const documentId = req.params.documentId;
     const db = await getDb();
 
     const [rows] = await db.query(
-      `SELECT version_id, version_number, uploaded_at
-       FROM document_versions
-       WHERE documento_id = ?
-       ORDER BY version_number DESC`,
-      [documentoId]
+      `SELECT VersionID, VersionNumber, UploadedAt
+       FROM DocumentVersions
+       WHERE DocumentID = ?
+       ORDER BY VersionNumber DESC`,
+      [documentId]
     );
 
     res.json({ historial: rows });
@@ -119,15 +118,15 @@ router.get('/download-version/:versionId', async (req, res) => {
     const db = await getDb();
 
     const [rows] = await db.query(
-      `SELECT d.nombre, dv.archivo, dv.version_number
-       FROM document_versions dv
-       JOIN documentos d ON dv.documento_id = d.id
-       WHERE dv.version_id = ?`,
+      `SELECT d.Name, dv.File, dv.VersionNumber
+       FROM DocumentVersions dv
+       JOIN Documents d ON dv.DocumentID = d.DocumentID
+       WHERE dv.VersionID = ?`,
       [versionId]
     );
 
     if (!rows.length) {
-      return res.status(404).send('Versión no encontrada');
+      return res.status(404).send
     }
 
     const version = rows[0];

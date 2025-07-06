@@ -9,7 +9,7 @@ const documentController = {
   getAll: async (req, res) => {
     try {
       const db = await getDb();
-      const [docs] = await db.query('SELECT * FROM documentos');
+      const [docs] = await db.query('SELECT DocumentID, Name, UpdatedAt FROM Documents');
       res.json(docs);
     } catch (error) {
       console.error(error);
@@ -24,7 +24,7 @@ const documentController = {
     try {
       const { id } = req.params;
       const db = await getDb();
-      const [rows] = await db.query('SELECT * FROM documentos WHERE id = ?', [id]);
+      const [rows] = await db.query('SELECT DocumentID, Name, UpdatedAt FROM Documents WHERE DocumentID = ?', [id]);
 
       if (!rows.length) {
         return res.status(404).json({ message: 'Document not found' });
@@ -47,12 +47,12 @@ const documentController = {
     }
 
     try {
-      const { nombre, descripcion } = req.body;
+      const { name, description } = req.body;
       const db = await getDb();
 
       const [result] = await db.query(
-        'INSERT INTO documentos (nombre, descripcion) VALUES (?, ?)',
-        [nombre, descripcion || null]
+        'INSERT INTO Documents (Name, Description) VALUES (?, ?)',
+        [name, description || null]
       );
 
       res.status(201).json({
@@ -74,7 +74,7 @@ const documentController = {
       const db = await getDb();
 
       // Verifica que exista
-      const [rows] = await db.query('SELECT id FROM documentos WHERE id = ?', [documentoId]);
+      const [rows] = await db.query('SELECT DocumentID FROM Documents WHERE DocumentID = ?', [documentoId]);
       if (!rows.length) {
         fs.unlinkSync(req.file.path);
         return res.status(404).json({ message: 'Document not found' });
@@ -82,7 +82,7 @@ const documentController = {
 
       // Último número de versión
       const [versionRows] = await db.query(
-        'SELECT MAX(version_number) AS lastVersion FROM document_versions WHERE documento_id = ?',
+        'SELECT MAX(VersionNumber) AS lastVersion FROM DocumentVersions WHERE DocumentID = ?',
         [documentoId]
       );
       const lastVersion = versionRows[0].lastVersion || 0;
@@ -91,7 +91,7 @@ const documentController = {
       const archivoBuffer = fs.readFileSync(req.file.path);
 
       await db.query(
-        `INSERT INTO document_versions (documento_id, archivo, version_number)
+        `INSERT INTO DocumentVersions (DocumentID, File, VersionNumber)
          VALUES (?, ?, ?)`,
         [documentoId, archivoBuffer, lastVersion + 1]
       );
@@ -117,10 +117,10 @@ const documentController = {
       const db = await getDb();
 
       const [rows] = await db.query(
-        `SELECT version_id, version_number, uploaded_at
-         FROM document_versions
-         WHERE documento_id = ?
-         ORDER BY version_number DESC`,
+        `SELECT VersionID, VersionNumber, UploadedAt
+         FROM DocumentVersions
+         WHERE DocumentID = ?
+         ORDER BY VersionNumber DESC`,
         [documentoId]
       );
 
@@ -140,10 +140,10 @@ const documentController = {
       const db = await getDb();
 
       const [rows] = await db.query(
-        `SELECT d.nombre, dv.archivo, dv.version_number
-         FROM document_versions dv
-         JOIN documentos d ON dv.documento_id = d.id
-         WHERE dv.version_id = ?`,
+        `SELECT d.Name, dv.File, dv.VersionNumber
+         FROM DocumentVersions dv
+         JOIN Documents d ON dv.DocumentID = d.DocumentID
+         WHERE dv.VersionID = ?`,
         [versionId]
       );
 
@@ -152,13 +152,13 @@ const documentController = {
       }
 
       const version = rows[0];
-      res.setHeader('Content-Disposition', `attachment; filename=V${version.version_number}_${version.nombre}.docx`);
+      res.setHeader('Content-Disposition', `attachment; filename=V${version.VersionNumber}_${version.Name}.docx`);
       res.setHeader(
         'Content-Type',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       );
 
-      res.send(version.archivo);
+      res.send(version.File);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error downloading version' });
@@ -173,12 +173,12 @@ const documentController = {
       const { id } = req.params;
       const db = await getDb();
 
-      const [rows] = await db.query('SELECT * FROM documentos WHERE id = ?', [id]);
+      const [rows] = await db.query('SELECT DocumentID FROM Documents WHERE DocumentID = ?', [id]);
       if (!rows.length) {
         return res.status(404).json({ message: 'Document not found' });
       }
 
-      await db.query('DELETE FROM documentos WHERE id = ?', [id]);
+      await db.query('DELETE FROM Documents WHERE DocumentID = ?', [id]);
       res.json({ message: 'Document and all versions deleted successfully' });
     } catch (error) {
       console.error(error);

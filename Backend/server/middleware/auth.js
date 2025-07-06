@@ -4,21 +4,26 @@ function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization || req.headers.Authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'Token no proporcionado o formato incorrecto' });
+    return res.status(401).json({
+      success: false,
+      message: 'Token no proporcionado o formato incorrecto'
+    });
   }
 
   const token = authHeader.split(' ')[1];
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+  jwt.verify(token, process.env.JWT_SECRET || 'secret_key', (err, decoded) => {
     if (err) {
       console.error('JWT Error:', err.name);
       const message = err.name === 'TokenExpiredError'
         ? 'Token expirado'
         : 'Token inválido';
-      return res.status(403).json({ message });
+      return res.status(403).json({
+        success: false,
+        message
+      });
     }
 
-    // Mapeo flexible de propiedades
     req.user = {
       userId: decoded.userId || decoded.id,
       email: decoded.email,
@@ -27,7 +32,6 @@ function authenticateJWT(req, res, next) {
       direccionNombre: decoded.direccionNombre
     };
 
-    console.log('Usuario autenticado:', req.user);
     next();
   });
 }

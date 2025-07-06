@@ -2,37 +2,46 @@ const { getDb } = require('../config/database');
 
 class Document {
   static async create(name, fileBuffer) {
-    try {
-      const db = await getDb();
-      const [result] = await db.query(
-        `INSERT INTO documentos (nombre, archivo)
-         VALUES (?, ?)`,
-        [name, fileBuffer]
-      );
-      return result.insertId;
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
-    }
+    const db = await getDb();
+    const [result] = await db.query(
+      `INSERT INTO Documents (Name, File)
+        VALUES (?, ?)`,
+      [name, fileBuffer]
+    );
+    return result.insertId;
+  }
+
+  static async createVersion(documentId, fileBuffer) {
+    const db = await getDb();
+    const [versionRows] = await db.query(
+      `SELECT MAX(VersionNumber) as maxVersion 
+        FROM DocumentVersions 
+        WHERE DocumentID = ?`,
+      [documentId]
+    );
+
+    const newVersion = (versionRows[0].maxVersion || 0) + 1;
+
+    const [result] = await db.query(
+      `INSERT INTO DocumentVersions (DocumentID, File, VersionNumber)
+        VALUES (?, ?, ?)`,
+      [documentId, fileBuffer, newVersion]
+    );
+    return newVersion;
   }
 
   static async getById(id) {
-    try {
-      const idNum = Number(id);
-      if (isNaN(idNum)) throw new Error('ID must be a valid number');
+    const idNum = Number(id);
+    if (isNaN(idNum)) throw new Error('ID must be a valid number');
 
-      const db = await getDb();
-      const [rows] = await db.query(
-        `SELECT id, nombre, updated_at 
-         FROM documentos
-         WHERE id = ?`,
-        [idNum]
-      );
-      return rows[0];
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
-    }
+    const db = await getDb();
+    const [rows] = await db.query(
+      `SELECT DocumentID, Name, UpdatedAt 
+        FROM Documents
+        WHERE DocumentID = ?`,
+      [idNum]
+    );
+    return rows[0];
   }
 
   static async getFileById(id) {
@@ -42,9 +51,9 @@ class Document {
 
       const db = await getDb();
       const [rows] = await db.query(
-        `SELECT nombre, archivo
-         FROM documentos
-         WHERE id = ?`,
+        `SELECT Name, File
+          FROM Documents
+          WHERE DocumentID = ?`,
         [idNum]
       );
       return rows[0];
@@ -61,7 +70,7 @@ class Document {
 
       const db = await getDb();
       await db.query(
-        `DELETE FROM documentos WHERE id = ?`,
+        `DELETE FROM Documents WHERE DocumentID = ?`,
         [idNum]
       );
     } catch (error) {
@@ -74,7 +83,7 @@ class Document {
     try {
       const db = await getDb();
       const [rows] = await db.query(
-        `SELECT id, nombre, updated_at FROM documentos`
+        `SELECT DocumentID, Name, UpdatedAt FROM Documents`
       );
       return rows;
     } catch (error) {
