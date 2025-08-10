@@ -115,7 +115,7 @@ const userController = {
   getAvailableUsers: async (req, res) => {
     try {
       // Verificar permisos del usuario autenticado
-      if (!req.user.canManageProcedures && !req.user.isDepartmentHead) {
+      if (!req.user.canManageProcedures) {
         return res.status(403).json({
           success: false,
           message: 'No tienes permisos para acceder a esta información'

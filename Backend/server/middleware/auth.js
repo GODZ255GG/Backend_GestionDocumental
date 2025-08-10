@@ -24,12 +24,19 @@ function authenticateJWT(req, res, next) {
       });
     }
 
+    const role = decoded.rol || decoded.role;
+
     req.user = {
       userId: decoded.userId || decoded.id,
       email: decoded.email,
       rol: decoded.rol || decoded.role,
-      direccionId: decoded.direccionId ? Number(decoded.direccionId) : null,
-      direccionNombre: decoded.direccionNombre
+      direccionId: decoded.direccionId
+        ? Number(decoded.direccionId)
+        : null,
+      direccionNombre: decoded.direccionNombre,
+      // LEEMOS DIRECTO del token:
+      canManageProcedures: Boolean(decoded.canManageProcedures),
+      isDepartmentHead: Boolean(decoded.isDepartmentHead)
     };
 
     next();
