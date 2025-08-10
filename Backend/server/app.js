@@ -7,6 +7,7 @@ const departmentRoutes = require('./routes/departmentRoutes');
 const userRoutes = require('./routes/userRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const subprocessRoutes = require('./routes/subprocessRoutes');
+const secretariatRoutes = require('./routes/secretariatRoutes');
 
 const app = express();
 
@@ -15,7 +16,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://127.0.0.1:5500',
+      'http://127.0.0.1:5501',
       // añade otros dominios permitidos si es necesario
     ];
 
@@ -40,6 +41,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents',documentRoutes);
 app.use('/api/subprocesses', subprocessRoutes);
+app.use('/api/secretariats', secretariatRoutes);
 
 // Test route
 app.get('/', (req, res) => {

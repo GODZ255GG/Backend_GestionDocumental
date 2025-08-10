@@ -132,6 +132,27 @@ class User {
     );
   }
 
+  static async getAvailableForDepartmentAssignment() {
+    const db = await getDb();
+    const [rows] = await db.query(
+      `SELECT 
+       u.UserID,
+       u.Name,
+       GROUP_CONCAT(r.RoleName SEPARATOR ', ') AS Role
+     FROM Users u
+     LEFT JOIN UserRoles ur
+       ON u.UserID = ur.UserID
+     LEFT JOIN Roles r
+       ON ur.RoleID = r.RoleID
+     WHERE u.DepartmentID IS NULL
+       AND u.IsActive = TRUE
+     GROUP BY u.UserID, u.Name
+     ORDER BY u.Name`
+    );
+    return rows;
+  }
+
+
 }
 
 module.exports = User;

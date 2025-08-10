@@ -18,8 +18,8 @@ const validateUser = [
 // Routes
 router.get('/', authenticateJWT, userController.getAll);
 router.get('/department-heads', authenticateJWT, validateUser, userController.getDepartmentHeads);
-router.get('/:id', authenticateJWT, userController.getById);
 router.get('/available-for-assignment', authenticateJWT, userController.getAvailableUsers);
+router.get('/:id', authenticateJWT, userController.getById);
 router.post('/', authenticateJWT, validateUser, userController.create);
 router.put('/:id', authenticateJWT, validateUser, userController.update);
 router.delete('/:id', authenticateJWT, userController.deactivate);

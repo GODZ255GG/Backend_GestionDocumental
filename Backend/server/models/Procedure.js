@@ -77,6 +77,18 @@ class Procedure {
     const db = await getDb();
     await db.query('DELETE FROM Procedures WHERE ProcedureID = ?', [id]);
   }
+
+  static async getByUser(userId) {
+    const db = await getDb();
+    const [rows] = await db.query(
+      `SELECT DISTINCT p.*, u.Name AS ResponsibleName 
+     FROM Procedures p
+     JOIN Users u ON p.ResponsibleID = u.UserID
+     WHERE p.ResponsibleID = ? OR p.CreatedBy = ? OR p.ModifiedBy = ?`,
+      [userId, userId, userId]
+    );
+    return rows;
+  }
 }
 
 module.exports = Procedure;

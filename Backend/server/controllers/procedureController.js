@@ -52,7 +52,15 @@ const procedureController = {
     try {
       const { id } = req.params;
       const { title, description, subprocessId, status } = req.body;
-      await Procedure.update(id, title, description, subprocessId, req.user.userId, status);
+      await Procedure.update(
+        id,
+        title,
+        description,
+        subprocessId,
+        req.user.userId,  // ResponsibleID
+        req.user.userId,  // ModifiedBy  (quien está editando)
+        status            // Status
+      );
       res.json({ message: 'Procedure updated successfully' });
     } catch (error) {
       res.status(400).json({ message: error.message });
@@ -103,6 +111,26 @@ const procedureController = {
       res.status(500).json({
         success: false,
         message: 'Error getting procedures',
+        error: error.message
+      });
+    }
+  },
+
+  getProceduresByUser: async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const procedures = await Procedure.getByUser(userId);
+
+      res.json({
+        success: true,
+        data: procedures,
+        count: procedures.length
+      });
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error getting user procedures',
         error: error.message
       });
     }

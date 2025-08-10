@@ -66,8 +66,8 @@ router.post('/login', async (req, res) => {
         direccionNombre: user.direccionNombre,
         canDeleteDepartment: user.CanDeleteDepartment,
         canDeleteSubprocess: user.CanDeleteSubprocess,
-        canManageProcedures: user.CanManageProcedures,
-        isDepartmentHead: user.IsDepartmentHead
+        canManageProcedures: user.CanManageProcedures,    // ← aquí
+        isDepartmentHead: user.IsDepartmentHead        // ← y aquí
       },
       process.env.JWT_SECRET || 'secret_key',
       { expiresIn: '1h' }

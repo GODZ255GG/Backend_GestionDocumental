@@ -26,5 +26,6 @@ router.get('/', authenticateJWT, procedureController.getAllProcedures);
 router.put('/:id', authenticateJWT, updateProcedureValidator, procedureController.updateProcedure);
 router.delete('/:id', authenticateJWT, procedureController.deleteProcedure);
 router.get('/by-department/:id', authenticateJWT, procedureController.getProceduresByDepartment);
+router.get('/by-user/me', authenticateJWT, procedureController.getProceduresByUser);
 
 module.exports = router;

@@ -107,14 +107,21 @@ const departmentController = {
 
     try {
       const { id } = req.params;
-      const { name, description, headId, secretariat } = req.body;
+      const { name, description, headId, secretariatId, isActive } = req.body;
 
       const existingDept = await Department.getById(id);
       if (!existingDept) {
         return res.status(404).json({ message: 'Department not found' });
       }
 
-      await Department.update(id, name, description, headId, secretariat);
+      await Department.update(
+        id,
+        name,
+        description,
+        headId,
+        secretariatId,  // <-- entero
+        isActive
+      );
 
       // Si se asignó un jefe, actualizar su departamento
       if (headId) {
