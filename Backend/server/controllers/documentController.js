@@ -1,15 +1,10 @@
 const { validationResult } = require('express-validator');
-const fs = require('fs');
-const { getDb } = require('../config/database');
+const Document = require('../models/Document'); // Usa model para queries
 
 const documentController = {
-  /**
-   * Obtener todos los documentos
-   */
   getAll: async (req, res) => {
     try {
-      const db = await getDb();
-      const [docs] = await db.query('SELECT DocumentID, Name, UpdatedAt FROM Documents');
+      const docs = await Document.getAll();
       res.json(docs);
     } catch (error) {
       console.error(error);
@@ -17,147 +12,70 @@ const documentController = {
     }
   },
 
-  /**
-   * Obtener un documento por ID
-   */
   getById: async (req, res) => {
     try {
       const { id } = req.params;
-      const db = await getDb();
-      const [rows] = await db.query('SELECT DocumentID, Name, UpdatedAt FROM Documents WHERE DocumentID = ?', [id]);
-
-      if (!rows.length) {
-        return res.status(404).json({ message: 'Document not found' });
-      }
-
-      res.json(rows[0]);
+      const doc = await Document.getById(id);
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
+      res.json(doc);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error getting document' });
     }
   },
 
-  /**
-   * Crear un documento base
-   */
   create: async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
     try {
       const { name, description } = req.body;
-      const db = await getDb();
-
-      const [result] = await db.query(
-        'INSERT INTO Documents (Name, Description) VALUES (?, ?)',
-        [name, description || null]
-      );
-
-      res.status(201).json({
-        message: 'Document created successfully',
-        documentId: result.insertId
-      });
+      const id = await Document.create(name, description);
+      res.status(201).json({ message: 'Document created successfully', documentId: id });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error creating document' });
     }
   },
 
-  /**
-   * Subir una nueva versión
-   */
   uploadVersion: async (req, res) => {
     try {
       const { documentoId } = req.params;
-      const db = await getDb();
+      const doc = await Document.getById(documentoId);
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
 
-      // Verifica que exista
-      const [rows] = await db.query('SELECT DocumentID FROM Documents WHERE DocumentID = ?', [documentoId]);
-      if (!rows.length) {
-        fs.unlinkSync(req.file.path);
-        return res.status(404).json({ message: 'Document not found' });
-      }
+      const fileBuffer = req.file.buffer; // Directo de memoryStorage
 
-      // Último número de versión
-      const [versionRows] = await db.query(
-        'SELECT MAX(VersionNumber) AS lastVersion FROM DocumentVersions WHERE DocumentID = ?',
-        [documentoId]
-      );
-      const lastVersion = versionRows[0].lastVersion || 0;
+      const versions = await Document.getVersions(documentoId);
+      const lastVersion = versions.length ? versions[0].VersionNumber : 0;
 
-      // Lee archivo y guarda
-      const archivoBuffer = fs.readFileSync(req.file.path);
-
-      await db.query(
-        `INSERT INTO DocumentVersions (DocumentID, File, VersionNumber)
-         VALUES (?, ?, ?)`,
-        [documentoId, archivoBuffer, lastVersion + 1]
-      );
-
-      fs.unlinkSync(req.file.path);
-
-      res.status(201).json({
-        message: 'New version uploaded',
-        version: lastVersion + 1
-      });
+      await Document.uploadVersion(documentoId, fileBuffer, lastVersion + 1);
+      res.status(201).json({ message: 'New version uploaded', version: lastVersion + 1 });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error uploading version' });
     }
   },
 
-  /**
-   * Obtener historial de versiones
-   */
   getVersions: async (req, res) => {
     try {
       const { documentoId } = req.params;
-      const db = await getDb();
-
-      const [rows] = await db.query(
-        `SELECT VersionID, VersionNumber, UploadedAt
-         FROM DocumentVersions
-         WHERE DocumentID = ?
-         ORDER BY VersionNumber DESC`,
-        [documentoId]
-      );
-
-      res.json({ historial: rows });
+      const versions = await Document.getVersions(documentoId);
+      res.json({ historial: versions });
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: 'Error getting versions' });
     }
   },
 
-  /**
-   * Descargar versión específica
-   */
   downloadVersion: async (req, res) => {
     try {
       const { versionId } = req.params;
-      const db = await getDb();
+      const version = await Document.getVersionById(versionId);
+      if (!version) return res.status(404).json({ message: 'Version not found' });
 
-      const [rows] = await db.query(
-        `SELECT d.Name, dv.File, dv.VersionNumber
-         FROM DocumentVersions dv
-         JOIN Documents d ON dv.DocumentID = d.DocumentID
-         WHERE dv.VersionID = ?`,
-        [versionId]
-      );
-
-      if (!rows.length) {
-        return res.status(404).json({ message: 'Version not found' });
-      }
-
-      const version = rows[0];
       res.setHeader('Content-Disposition', `attachment; filename=V${version.VersionNumber}_${version.Name}.docx`);
-      res.setHeader(
-        'Content-Type',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      );
-
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.send(version.File);
     } catch (error) {
       console.error(error);
@@ -165,20 +83,12 @@ const documentController = {
     }
   },
 
-  /**
-   * Eliminar un documento (y sus versiones)
-   */
   delete: async (req, res) => {
     try {
       const { id } = req.params;
-      const db = await getDb();
-
-      const [rows] = await db.query('SELECT DocumentID FROM Documents WHERE DocumentID = ?', [id]);
-      if (!rows.length) {
-        return res.status(404).json({ message: 'Document not found' });
-      }
-
-      await db.query('DELETE FROM Documents WHERE DocumentID = ?', [id]);
+      const doc = await Document.getById(id);
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
+      await Document.delete(id);
       res.json({ message: 'Document and all versions deleted successfully' });
     } catch (error) {
       console.error(error);

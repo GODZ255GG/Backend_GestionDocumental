@@ -3,6 +3,7 @@ CREATE DATABASE IF NOT EXISTS DocumentManagement;
 USE DocumentManagement;
 
 -- Drop tables in reverse order to avoid dependency issues
+DROP TABLE IF EXISTS ProcedureDocuments;
 DROP TABLE IF EXISTS DocumentVersions;
 DROP TABLE IF EXISTS Documents;
 DROP TABLE IF EXISTS Procedures;
@@ -99,11 +100,11 @@ CREATE TABLE Procedures (
     FOREIGN KEY (ModifiedBy) REFERENCES Users(UserID) ON DELETE SET NULL
 );
 
--- Create Documents table
+-- Create Documents table (sin File directo, para versioning)
 CREATE TABLE Documents (
     DocumentID INT AUTO_INCREMENT PRIMARY KEY,
     Name VARCHAR(255) NOT NULL,
-    File LONGBLOB NOT NULL,
+    Description VARCHAR(500),
     UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
@@ -117,7 +118,17 @@ CREATE TABLE DocumentVersions (
     FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID) ON DELETE CASCADE
 );
 
--- Insert initial data
+-- Create ProcedureDocuments junction table (nueva para relación many-to-many)
+CREATE TABLE ProcedureDocuments (
+    ProcedureID INT NOT NULL,
+    DocumentID INT NOT NULL,
+    AddedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (ProcedureID, DocumentID),
+    FOREIGN KEY (ProcedureID) REFERENCES Procedures(ProcedureID) ON DELETE CASCADE,
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID) ON DELETE CASCADE
+);
+
+-- Insert initial data (igual que antes)
 -- Insert Secretariats
 INSERT INTO Secretariats (Name, Description)
 VALUES 
