@@ -110,6 +110,42 @@ const userController = {
       console.error(error);
       res.status(500).json({ message: 'Error deactivating user' });
     }
+  },
+
+  getAvailableUsers: async (req, res) => {
+    try {
+      // Verificar permisos del usuario autenticado
+      if (!req.user.canManageProcedures) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para acceder a esta información'
+        });
+      }
+
+      const availableUsers = await User.getAvailableForDepartmentAssignment();
+
+      if (!availableUsers || availableUsers.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          message: 'No hay usuarios disponibles para asignación'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: availableUsers,
+        count: availableUsers.length
+      });
+
+    } catch (error) {
+      console.error('Error getting available users:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al obtener usuarios disponibles',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
   }
 };
 

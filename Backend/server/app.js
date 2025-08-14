@@ -5,12 +5,27 @@ const authRoutes = require('./routes/authRoutes');
 const procedureRoutes = require('./routes/procedureRoutes');
 const departmentRoutes = require('./routes/departmentRoutes');
 const userRoutes = require('./routes/userRoutes');
+const documentRoutes = require('./routes/documentRoutes');
+const subprocessRoutes = require('./routes/subprocessRoutes');
+const secretariatRoutes = require('./routes/secretariatRoutes');
 
 const app = express();
 
 // Middlewares
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:5501',
+      // añade otros dominios permitidos si es necesario
+    ];
+
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
   optionsSuccessStatus: 204
@@ -24,6 +39,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/procedures', procedureRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/documents',documentRoutes);
+app.use('/api/subprocesses', subprocessRoutes);
+app.use('/api/secretariats', secretariatRoutes);
 
 // Test route
 app.get('/', (req, res) => {
@@ -37,3 +55,4 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+

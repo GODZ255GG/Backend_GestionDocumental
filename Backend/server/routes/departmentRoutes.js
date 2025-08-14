@@ -10,7 +10,7 @@ const validateDepartment = [
   check('name').notEmpty().withMessage('Name is required'),
   check('description').optional(),
   check('headId').optional().isInt().withMessage('Head ID must be a number'),
-  check('secretariat').optional()
+  check('secretariat').notEmpty().withMessage('Secretariat is required').isInt().withMessage('Secretariat must be a number')
 ];
 
 // Existing routes

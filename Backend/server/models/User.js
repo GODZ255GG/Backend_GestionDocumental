@@ -14,22 +14,14 @@ class User {
     return rows[0];
   }
 
-  static async getAll() {
-    const db = await getDb();
-    const [rows] = await db.query(
-      'SELECT UserID, Name, Email, Role, DepartmentID, IsActive FROM Users'
-    );
-    return rows;
-  }
-
   static async getDepartmentHeads() {
     const db = await getDb();
     const [rows] = await db.query(
       `SELECT UserID, Name 
-       FROM Users 
-       WHERE Role IN ('Director', 'Head', 'Administrator') 
-       AND IsActive = TRUE
-       ORDER BY Name`
+        FROM Users 
+        WHERE Role IN ('Director', 'Head', 'Administrator') 
+        AND IsActive = TRUE
+        ORDER BY Name`
     );
     return rows;
   }
@@ -39,9 +31,9 @@ class User {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
 
     const [result] = await db.query(
-      `INSERT INTO Users (Name, Email, PasswordHash, Role, DepartmentID)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userData.name, userData.email, hashedPassword, userData.role, userData.departmentId || null]
+      `INSERT INTO Users (Name, Email, PasswordHash, DepartmentID)
+        VALUES (?, ?, ?, ?)`,
+      [userData.name, userData.email, hashedPassword, userData.departmentId || null]
     );
 
     return result.insertId;
@@ -102,6 +94,65 @@ class User {
     const isValid = await bcrypt.compare(password, user.PasswordHash);
     return isValid ? user : null;
   }
+
+  static async getAll() {
+    const db = await getDb();
+    const [rows] = await db.query(
+      'SELECT UserID, Name, Email, Role, DepartmentID, IsActive FROM Users WHERE IsActive = TRUE'
+    );
+    return rows;
+  }
+
+  static async getRoles(userId) {
+    const db = await getDb();
+    const [rows] = await db.query(
+      `SELECT r.* FROM Roles r
+        JOIN UserRoles ur ON r.RoleID = ur.RoleID
+        WHERE ur.UserID = ?`,
+      [userId]
+    );
+    return rows;
+  }
+
+  static async addRole(userId, roleId) {
+    const db = await getDb();
+    await db.query(
+      `INSERT INTO UserRoles (UserID, RoleID)
+        VALUES (?, ?)`,
+      [userId, roleId]
+    );
+  }
+
+  static async removeRole(userId, roleId) {
+    const db = await getDb();
+    await db.query(
+      `DELETE FROM UserRoles 
+        WHERE UserID = ? AND RoleID = ?`,
+      [userId, roleId]
+    );
+  }
+
+  static async getAvailableForDepartmentAssignment() {
+    const db = await getDb();
+    const [rows] = await db.query(
+      `SELECT 
+       u.UserID,
+       u.Name,
+       GROUP_CONCAT(r.RoleName SEPARATOR ', ') AS Role
+     FROM Users u
+     LEFT JOIN UserRoles ur
+       ON u.UserID = ur.UserID
+     LEFT JOIN Roles r
+       ON ur.RoleID = r.RoleID
+     WHERE u.DepartmentID IS NULL
+       AND u.IsActive = TRUE
+     GROUP BY u.UserID, u.Name
+     ORDER BY u.Name`
+    );
+    return rows;
+  }
+
+
 }
 
 module.exports = User;
