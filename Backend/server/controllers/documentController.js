@@ -38,13 +38,18 @@ const documentController = {
     }
   },
 
+  // controllers/documentController.js
   uploadVersion: async (req, res) => {
     try {
       const { documentoId } = req.params;
       const doc = await Document.getById(documentoId);
       if (!doc) return res.status(404).json({ message: 'Document not found' });
 
-      const fileBuffer = req.file.buffer; // Directo de memoryStorage
+      if (!req.file) {
+        return res.status(400).json({ message: 'File is required and must be Word, PDF or image (≤10MB).' });
+      }
+
+      const fileBuffer = req.file.buffer;
 
       const versions = await Document.getVersions(documentoId);
       const lastVersion = versions.length ? versions[0].VersionNumber : 0;
@@ -52,10 +57,20 @@ const documentController = {
       await Document.uploadVersion(documentoId, fileBuffer, lastVersion + 1);
       res.status(201).json({ message: 'New version uploaded', version: lastVersion + 1 });
     } catch (error) {
+      // Si Multer pasó un error custom de tipo de archivo
+      if (error?.message === 'INVALID_FILE_TYPE') {
+        return res.status(400).json({ message: 'Only Word, PDF and image files are allowed (≤10MB).' });
+      }
+      // Si excede tamaño, Multer lanza MulterError con code=LIMIT_FILE_SIZE
+      if (error?.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Max file size is 10MB.' });
+      }
+
       console.error(error);
       res.status(500).json({ message: 'Error uploading version' });
     }
   },
+
 
   getVersions: async (req, res) => {
     try {

@@ -1,17 +1,48 @@
+// routes/documentRoutes.js
 const express = require('express');
 const multer = require('multer');
+const { authenticateJWT } = require('../middleware/auth');
 const documentController = require('../controllers/documentController');
-const authenticateJWT = require('../middleware/auth'); // Asume middleware auth existe
 
 const router = express.Router();
+
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+
+// Tipos permitidos
+const ALLOWED_MIMES = new Set([
+    'application/pdf',
+    'application/msword', // .doc
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+    'image/jpeg',
+    'image/png',
+    'image/bmp',
+    'image/webp'
+]);
+
+const EXT_OK = /\.(pdf|docx?|jpe?g|png|bmp|webp)$/i;
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+        // Algunos navegadores suben DOCX como octet-stream: validamos por extensión como fallback
+        const ok = ALLOWED_MIMES.has(file.mimetype) || EXT_OK.test(file.originalname);
+        if (ok) return cb(null, true);
+        const err = new Error('INVALID_FILE_TYPE');
+        err.statusCode = 400;
+        return cb(err);
+    },
+});
 
 // Crear documento base
 router.post('/documents', authenticateJWT, documentController.create);
 
-// Subir versión (con file)
-router.post('/documents/:documentoId/versions', authenticateJWT, upload.single('file'), documentController.uploadVersion);
+// Subir versión (con file) — con validación y límite
+router.post('/documents/:documentoId/versions',
+    authenticateJWT,
+    upload.single('file'),
+    documentController.uploadVersion
+);
 
 // Get all docs
 router.get('/documents', authenticateJWT, documentController.getAll);

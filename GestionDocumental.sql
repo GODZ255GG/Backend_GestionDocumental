@@ -89,7 +89,7 @@ CREATE TABLE Procedures (
     Description TEXT,
     SubprocessID INT NOT NULL,
     ResponsibleID INT NOT NULL,
-    Status ENUM('Draft', 'Active', 'Pending', 'Archived') DEFAULT 'Draft',
+    Status ENUM('Created', 'In progress', 'Under review', 'Published', 'Archived') DEFAULT 'Created',
     CreatedBy INT,
     ModifiedBy INT,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -132,13 +132,15 @@ CREATE TABLE ProcedureDocuments (
 -- Insert Secretariats
 INSERT INTO Secretariats (Name, Description)
 VALUES 
-('Main Secretariat', 'Oversees HR and administrative departments'),
-('SAF Secretariat', 'Oversees financial and administrative functions');
+('Secretaria Académica', 'La Secretaría Académica es la responsable de planear, organizar, dirigir y supervisar las actividades académicas de la Universidad Veracruzana, así como dirigir las actividades docentes y de investigación, propiciando acciones de vinculación entre las mismas para el logro de la superación académica universitaria.'),
+('Secretaria de Administracción y Finanzas', 'La Secretaría de Administración y Finanzas (SAF), es responsable de coordinar la adecuada administración de los recursos humanos, financieros y materiales, para proporcionar apoyo y servicio eficiente a las áreas que contribuyen directamente a los fines de la Universidad, así como de planear, supervisar y vigilar la operación financiera de la Universidad.'),
+('Secretaria de Desarrollo Institucional','La Secretaría de Desarrollo Institucional es la dependencia encargada de contribuir al logro de los fines de la Universidad Veracruzana; de conservar, crear y transmitir la cultura, mediante la definición de estrategias y la coordinación de los titulares de las dependencias a su cargo.');
+
 
 -- Insert Departments
 INSERT INTO Departments (Name, Description, SecretariatID, HeadID)
 VALUES 
-('General Human Resources Directorate', 'Central department for personnel management', 
+('General Human Resources Directorate', 'La Dirección General de Recursos Humanos tendrá a su cargo la administración del personal de la Universidad Veracruzana.', 
  (SELECT SecretariatID FROM Secretariats WHERE Name = 'Main Secretariat'), NULL),
 ('Financial Directorate', 'Manages financial operations', 
  (SELECT SecretariatID FROM Secretariats WHERE Name = 'SAF Secretariat'), NULL);
@@ -146,13 +148,13 @@ VALUES
 -- Insert Users
 INSERT INTO Users (Name, Email, PasswordHash, DepartmentID)
 VALUES
-('Ana Pérez', 'ana.personal@institution.edu.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', 
+('Dra. Itzel Alessandra Reyes Flores', 'itreyes@uv.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', 
  (SELECT DepartmentID FROM Departments WHERE Name = 'General Human Resources Directorate')),
-('Marcos Rivas', 'marcos.hr@institution.edu.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', 
+('Lic. Rosa Aidé Villalobos Betancourt', 'rovillalobos@uv.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', 
  (SELECT DepartmentID FROM Departments WHERE Name = 'General Human Resources Directorate')),
-('Sofía Aguilar', 'sofia.saf@institution.edu.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', 
+('Mtra. Lizbeth Margarita Viveros Cancino', 'lizviveros@uv.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', 
  (SELECT DepartmentID FROM Departments WHERE Name = 'Financial Directorate')),
-('Luis Ortega', 'luis.oum@institution.edu.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', NULL);
+('Lic. Álvaro Gabriel Hernández', 'agabriel@uv.mx', '$2b$10$t6t0r1iwBx6X1nEk7wD0ue/IL78MmdebB8/4tEcNt9clnP0Mx1JV2', NULL);
 
 -- Store DepartmentIDs for updates
 SET @HRDeptID = (SELECT DepartmentID FROM Departments WHERE Name = 'General Human Resources Directorate');
@@ -160,11 +162,11 @@ SET @FinanceDeptID = (SELECT DepartmentID FROM Departments WHERE Name = 'Financi
 
 -- Update Departments to set HeadID
 UPDATE Departments 
-SET HeadID = (SELECT UserID FROM Users WHERE Email = 'marcos.hr@institution.edu.mx')
+SET HeadID = (SELECT UserID FROM Users WHERE Email = 'rosa.hr@institution.edu.mx')
 WHERE DepartmentID = @HRDeptID;
 
 UPDATE Departments 
-SET HeadID = (SELECT UserID FROM Users WHERE Email = 'sofia.saf@institution.edu.mx')
+SET HeadID = (SELECT UserID FROM Users WHERE Email = 'bertha.saf@institution.edu.mx')
 WHERE DepartmentID = @FinanceDeptID;
 
 -- Insert Roles
@@ -178,13 +180,13 @@ VALUES
 -- Insert UserRoles
 INSERT INTO UserRoles (UserID, RoleID)
 VALUES
-((SELECT UserID FROM Users WHERE Email = 'marcos.hr@institution.edu.mx'), 
+((SELECT UserID FROM Users WHERE Email = 'rosa.hr@institution.edu.mx'), 
  (SELECT RoleID FROM Roles WHERE RoleName = 'General HR Director')),
-((SELECT UserID FROM Users WHERE Email = 'ana.personal@institution.edu.mx'), 
+((SELECT UserID FROM Users WHERE Email = 'alessandra.personal@institution.edu.mx'), 
  (SELECT RoleID FROM Roles WHERE RoleName = 'Personnel Director')),
-((SELECT UserID FROM Users WHERE Email = 'sofia.saf@institution.edu.mx'), 
+((SELECT UserID FROM Users WHERE Email = 'bertha.saf@institution.edu.mx'), 
  (SELECT RoleID FROM Roles WHERE RoleName = 'SAF Director')),
-((SELECT UserID FROM Users WHERE Email = 'luis.oum@institution.edu.mx'), 
+((SELECT UserID FROM Users WHERE Email = 'alvaro.oum@institution.edu.mx'), 
  (SELECT RoleID FROM Roles WHERE RoleName = 'OUM'));
 
 -- Insert Subprocesses
@@ -202,13 +204,13 @@ INSERT INTO Procedures (Title, Description, SubprocessID, ResponsibleID, Created
 VALUES
 ('Candidate Evaluation', 'Procedure for conducting interviews and tests', 
  (SELECT SubprocessID FROM Subprocesses WHERE Name = 'Recruitment and Selection'),
- (SELECT UserID FROM Users WHERE Email = 'ana.personal@institution.edu.mx'),
- (SELECT UserID FROM Users WHERE Email = 'ana.personal@institution.edu.mx')),
+ (SELECT UserID FROM Users WHERE Email = 'alessandra.personal@institution.edu.mx'),
+ (SELECT UserID FROM Users WHERE Email = 'alessandra.personal@institution.edu.mx')),
 ('Incident Registration', 'Procedure for recording absences or delays', 
  (SELECT SubprocessID FROM Subprocesses WHERE Name = 'Attendance Control'),
- (SELECT UserID FROM Users WHERE Email = 'ana.personal@institution.edu.mx'),
- (SELECT UserID FROM Users WHERE Email = 'ana.personal@institution.edu.mx')),
+ (SELECT UserID FROM Users WHERE Email = 'alessandra.personal@institution.edu.mx'),
+ (SELECT UserID FROM Users WHERE Email = 'alessandra.personal@institution.edu.mx')),
 ('Budget Approval', 'Procedure for approving financial budgets', 
  (SELECT SubprocessID FROM Subprocesses WHERE Name = 'Budget Management'),
- (SELECT UserID FROM Users WHERE Email = 'sofia.saf@institution.edu.mx'),
- (SELECT UserID FROM Users WHERE Email = 'sofia.saf@institution.edu.mx'));
+ (SELECT UserID FROM Users WHERE Email = 'bertha.saf@institution.edu.mx'),
+ (SELECT UserID FROM Users WHERE Email = 'bertha.saf@institution.edu.mx'));
