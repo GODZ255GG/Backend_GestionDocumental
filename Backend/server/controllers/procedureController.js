@@ -48,6 +48,41 @@ const procedureController = {
     }
   },
 
+  addDocumentToProcedure: async (req, res) => {
+    try {
+      const { id: procedureId } = req.params;
+      const { documentId } = req.body;
+      const procedure = await Procedure.getById(procedureId);
+      if (!procedure) return res.status(404).json({ message: 'Procedure not found' });
+      if (procedure.ResponsibleID !== req.user.userId) {
+        return res.status(403).json({ message: 'Unauthorized to modify this procedure' });
+      }
+      await Document.addToProcedure(procedureId, documentId);
+      res.json({ message: 'Document added to procedure successfully' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error adding document' });
+    }
+  },
+
+  getDocumentsByProcedure: async (req, res) => {
+    try {
+      const { id: procedureId } = req.params;
+      const procedure = await Procedure.getById(procedureId);
+      if (!procedure) return res.status(404).json({ message: 'Procedure not found' });
+      // Check auth: permite si es responsible o mismo dept (ajusta si necesitas)
+      const userDept = await getUserDepartment(req.user.userId);
+      if (procedure.ResponsibleID !== req.user.userId && userDept.DepartmentID !== procedure.DepartmentID) {
+        return res.status(403).json({ message: 'Unauthorized to view documents' });
+      }
+      const documents = await Document.getByProcedure(procedureId);
+      res.json(documents);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Error getting documents' });
+    }
+  },
+
   updateProcedure: async (req, res) => {
     try {
       const { id } = req.params;
