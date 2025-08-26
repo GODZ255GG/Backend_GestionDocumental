@@ -1,7 +1,17 @@
 const { getDb } = require('../config/database');
 
-class Procedure {
+// Map de status para normalizar (español/lowercase a ENUM inglés)
+const statusMap = {
+  'creado': 'Created',
+  'en elaboración': 'In progress',
+  'en revisión': 'Under review',
+  'publicado': 'Published',
+  'archivado': 'Archived'
+};
 
+const validStatuses = ['Created', 'In progress', 'Under review', 'Published', 'Archived'];
+
+class Procedure {
   static async validateId(id) {
     const idNum = Number(id);
     if (isNaN(idNum)) {
@@ -10,13 +20,17 @@ class Procedure {
     return idNum;
   }
 
-  static async create(title, description, subprocessId, responsibleId, createdBy) {
+  static async create(title, description, subprocessId, responsibleId, createdBy, status = 'Created') {
     const db = await getDb();
+    const normalizedStatus = statusMap[status.toLowerCase()] || 'Created';  // Normaliza o default
+    if (!validStatuses.includes(normalizedStatus)) {
+      throw new Error('Invalid status value');
+    }
     const [result] = await db.query(
       `INSERT INTO Procedures 
         (Title, Description, SubprocessID, ResponsibleID, Status, CreatedBy) 
-        VALUES (?, ?, ?, ?, 'Draft', ?)`,
-      [title, description, subprocessId, responsibleId, createdBy]
+        VALUES (?, ?, ?, ?, ?, ?)`,
+      [title, description, subprocessId, responsibleId, normalizedStatus, createdBy]
     );
     return result.insertId;
   }
@@ -59,6 +73,10 @@ class Procedure {
   static async update(id, title, description, subprocessId, responsibleId, modifiedBy, status) {
     const idNum = await this.validateId(id);
     const db = await getDb();
+    const normalizedStatus = statusMap[status.toLowerCase()] || 'In progress';  // Normaliza o default para update
+    if (!validStatuses.includes(normalizedStatus)) {
+      throw new Error('Invalid status value');
+    }
     await db.query(
       `UPDATE Procedures 
         SET Title = ?, 
@@ -67,9 +85,9 @@ class Procedure {
             ResponsibleID = ?,
             ModifiedBy = ?, 
             Status = ?,
-            LastModified = CURRENT_TIMESTAMP()
+            LastModified = CURRENT_TIMESTAMP
         WHERE ProcedureID = ?`,
-      [title, description, subprocessId, responsibleId, modifiedBy, status, idNum]
+      [title, description, subprocessId, responsibleId, modifiedBy, normalizedStatus, idNum]
     );
   }
 
@@ -82,9 +100,9 @@ class Procedure {
     const db = await getDb();
     const [rows] = await db.query(
       `SELECT DISTINCT p.*, u.Name AS ResponsibleName 
-     FROM Procedures p
-     JOIN Users u ON p.ResponsibleID = u.UserID
-     WHERE p.ResponsibleID = ? OR p.CreatedBy = ? OR p.ModifiedBy = ?`,
+       FROM Procedures p
+       JOIN Users u ON p.ResponsibleID = u.UserID
+       WHERE p.ResponsibleID = ? OR p.CreatedBy = ? OR p.ModifiedBy = ?`,
       [userId, userId, userId]
     );
     return rows;

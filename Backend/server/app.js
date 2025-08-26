@@ -17,9 +17,10 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://127.0.0.1:5501',
+      'http://127.0.0.1:5500',
+      'http://localhost:5500',
       // añade otros dominios permitidos si es necesario
     ];
-
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -39,13 +40,18 @@ app.use('/api/auth', authRoutes);
 app.use('/api/procedures', procedureRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/documents',documentRoutes);
+app.use('/api', documentRoutes);  // Cambiado para /api/documents directo
 app.use('/api/subprocesses', subprocessRoutes);
 app.use('/api/secretariats', secretariatRoutes);
 
 // Test route
 app.get('/', (req, res) => {
   res.send('Document Management API');
+});
+
+// 404 handler como JSON
+app.use((req, res, next) => {
+  res.status(404).json({ message: 'Not Found' });
 });
 
 // Error handling
@@ -55,4 +61,3 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
-

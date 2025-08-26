@@ -29,5 +29,6 @@ router.get('/by-department/:id', authenticateJWT, procedureController.getProcedu
 router.get('/by-user/me', authenticateJWT, procedureController.getProceduresByUser);
 router.post('/:id/documents', authenticateJWT, procedureController.addDocumentToProcedure);
 router.get('/:id/documents', authenticateJWT, procedureController.getDocumentsByProcedure);
+router.post('/procedimientos/:procedureId/documents', authenticateJWT, procedureController.addDocument);
 
 module.exports = router;
