@@ -38,14 +38,14 @@ class Procedure {
   static async getById(id) {
     const db = await getDb();
     const [rows] = await db.query(
-      `SELECT p.*, u.Name AS ResponsibleName 
-        FROM Procedures p
-        JOIN Users u ON p.ResponsibleID = u.UserID
-        WHERE p.ProcedureID = ?`,
-      [id]
+        `SELECT p.*, u.Name AS ResponsibleName
+         FROM Procedures p
+         JOIN Users u ON p.ResponsibleID = u.UserID
+         WHERE p.ProcedureID = ?`,
+        [id]
     );
     return rows[0];
-  }
+}
 
   static async getAll() {
     const db = await getDb();
