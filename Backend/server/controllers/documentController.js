@@ -38,24 +38,47 @@ const documentController = {
     }
   },
 
-  uploadVersion: async (req, res) => {
+
+viewDocument: async (req, res) => {
     try {
-      const { documentoId } = req.params;
-      const doc = await Document.getById(documentoId);
-      if (!doc) return res.status(404).json({ message: 'Document not found' });
+        const { documentoId } = req.params;
+        const latestVersion = await Document.getLatestVersion(documentoId);
 
-      if (!req.file) return res.status(400).json({ message: 'File is required and must be Word, PDF or image (≤10MB).' });
+        if (!latestVersion) {
+            return res.status(404).json({ message: 'Documento o versión no encontrada' });
+        }
 
-      const fileBuffer = req.file.buffer;
+        // Configura la cabecera para que el navegador lo muestre (inline)
+        res.setHeader('Content-Type', latestVersion.MimeType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `inline; filename="${latestVersion.Name}"`);
+        res.send(latestVersion.File);
 
-      const versions = await Document.getVersions(documentoId);
-      const lastVersion = versions.length ? versions[0].VersionNumber : 0;
-      const nextVersion = lastVersion + 1;
-
-      await Document.addVersion(documentoId, fileBuffer, nextVersion);
-
-      res.status(201).json({ message: 'New version uploaded', version: nextVersion });
     } catch (error) {
+        console.error('Error viewing document:', error);
+        res.status(500).json({ message: 'Error del servidor al visualizar el documento' });
+    }
+},
+
+
+  uploadVersion: async (req, res) => {
+  try {
+    const { documentoId } = req.params;
+    const doc = await Document.getById(documentoId);
+    if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+    if (!req.file) return res.status(400).json({ message: 'File is required...' });
+
+    const fileBuffer = req.file.buffer;
+    const mimetype = req.file.mimetype; // Get the mimetype from the request
+
+    const versions = await Document.getVersions(documentoId);
+    const lastVersion = versions.length ? versions[0].VersionNumber : 0;
+    const nextVersion = lastVersion + 1;
+
+    await Document.addVersion(documentoId, fileBuffer, nextVersion, mimetype); // Pass the mimetype
+
+    res.status(201).json({ message: 'New version uploaded', version: nextVersion });
+  } catch (error) {
       if (error.message === 'INVALID_FILE_TYPE') {
         return res.status(400).json({ message: 'Only Word, PDF and image files are allowed (≤10MB).' });
       }
@@ -77,6 +100,25 @@ const documentController = {
       res.status(500).json({ message: 'Error getting versions' });
     }
   },
+
+  downloadLatestVersion: async (req, res) => {
+    try {
+        const { documentoId } = req.params;
+        const latestVersion = await Document.getLatestVersion(documentoId);
+
+        if (!latestVersion) {
+            return res.status(404).json({ message: 'Documento o versión no encontrada' });
+        }
+
+        res.setHeader('Content-Type', latestVersion.MimeType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${latestVersion.Name}"`);
+        res.send(latestVersion.File);
+
+    } catch (error) {
+        console.error('Error downloading latest version:', error);
+        res.status(500).json({ message: 'Error del servidor al descargar el documento' });
+    }
+},
 
   downloadVersion: async (req, res) => {
     try {

@@ -42,6 +42,20 @@ const Document = {
     return;
   },
 
+
+  getLatestVersion: async (documentId) => {
+      const db = await getDb();
+      const [rows] = await db.query(
+          `SELECT dv.File, d.Name, dv.VersionNumber, dv.MimeType FROM DocumentVersions dv
+          JOIN Documents d ON dv.DocumentID = d.DocumentID
+          WHERE dv.DocumentID = ?
+          ORDER BY dv.UploadedAt DESC
+          LIMIT 1`,
+          [documentId]
+      );
+      return rows[0] || null;
+  },
+
   getByProcedure: async (procedureId) => {
     const db = await getDb();
     const sql = `
@@ -57,13 +71,13 @@ const Document = {
     return rows;
   },
 
-  addVersion: async (documentId, fileBuffer, versionNumber) => {
+  addVersion: async (documentId, fileBuffer, versionNumber, mimetype) => {
     const db = await getDb();
     const sql = `
-      INSERT INTO DocumentVersions (DocumentID, File, VersionNumber, UploadedAt)
-      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO DocumentVersions (DocumentID, File, VersionNumber, MimeType, UploadedAt)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     `;
-    const [result] = await db.query(sql, [documentId, fileBuffer, versionNumber]);
+    const [result] = await db.query(sql, [documentId, fileBuffer, versionNumber, mimetype]);
     return result.insertId;
   },
 

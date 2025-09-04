@@ -44,11 +44,21 @@ router.post('/documents/:documentoId/versions',
     documentController.uploadVersion
 );
 
+
+// Para visualizar el documento en el navegador
+router.get('/documents/:documentoId/view', authenticateJWT, documentController.viewDocument);
+
+// Mantiene la ruta de descarga para el botón "Descargar"
+router.get('/documents/:documentoId/download', authenticateJWT, documentController.downloadLatestVersion);
+
 // Get all docs
 router.get('/documents', authenticateJWT, documentController.getAll);
 
 // Get by ID
 router.get('/documents/:id', authenticateJWT, documentController.getById);
+
+// Descarga la última versión de un documento por su ID
+router.get('/documents/:documentoId/download', authenticateJWT, documentController.downloadLatestVersion);
 
 // Get versions
 router.get('/documents/:documentoId/versions', authenticateJWT, documentController.getVersions);
