@@ -45,30 +45,40 @@ class Procedure {
         [id]
     );
     return rows[0];
+}node 
+
+static async getAll() {
+  const db = await getDb();
+  const [rows] = await db.query(
+    `SELECT p.*, u.Name AS ResponsibleName, COUNT(pd.DocumentID) AS documentCount
+       FROM Procedures p
+       LEFT JOIN Users u ON p.ResponsibleID = u.UserID
+       LEFT JOIN ProcedureDocuments pd ON pd.ProcedureID = p.ProcedureID
+       GROUP BY p.ProcedureID
+       ORDER BY p.CreatedAt DESC`
+  );
+  return rows;
 }
 
-  static async getAll() {
-    const db = await getDb();
-    const [rows] = await db.query(
-      `SELECT p.*, u.Name AS ResponsibleName 
-        FROM Procedures p
-        JOIN Users u ON p.ResponsibleID = u.UserID`
-    );
-    return rows;
-  }
 
-  static async getByDepartment(departmentId) {
-    const db = await getDb();
-    const [rows] = await db.query(
-      `SELECT p.*, u.Name AS ResponsibleName 
-        FROM Procedures p
-        JOIN Users u ON p.ResponsibleID = u.UserID
-        JOIN Subprocesses s ON p.SubprocessID = s.SubprocessID
-        WHERE s.DepartmentID = ?`,
-      [departmentId]
-    );
-    return rows;
-  }
+// En tu archivo Procedure.js
+static async getByDepartment(departmentId) {
+  const db = await getDb();
+  const [rows] = await db.query(
+    `SELECT p.*,
+            u.Name AS ResponsibleName,
+            COUNT(pd.DocumentID) AS documentCount
+     FROM Procedures p
+     LEFT JOIN Users u ON p.ResponsibleID = u.UserID
+     JOIN Subprocesses s ON p.SubprocessID = s.SubprocessID
+     LEFT JOIN ProcedureDocuments pd ON pd.ProcedureID = p.ProcedureID
+     WHERE s.DepartmentID = ?
+     GROUP BY p.ProcedureID
+     ORDER BY p.CreatedAt DESC`,
+    [departmentId]
+  );
+  return rows;
+}
 
   static async update(id, title, description, subprocessId, responsibleId, modifiedBy, status) {
     const idNum = await this.validateId(id);
@@ -91,10 +101,31 @@ class Procedure {
     );
   }
 
-  static async delete(id) {
-    const db = await getDb();
-    await db.query('DELETE FROM Procedures WHERE ProcedureID = ?', [id]);
-  }
+  
+static async delete(id) {
+    let connection;
+    try {
+        const idNum = await this.validateId(id);
+        connection = await getDb().getConnection();
+
+        await connection.beginTransaction();
+
+        // 1. Elimina las referencias en ProcedureDocuments
+        await connection.query('DELETE FROM ProcedureDocuments WHERE ProcedureID = ?', [idNum]);
+        
+        // 2. Elimina el procedimiento principal
+        await connection.query('DELETE FROM Procedures WHERE ProcedureID = ?', [idNum]);
+        
+        await connection.commit();
+        return true;
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error in delete:', error);
+        throw error;
+    } finally {
+        if (connection) connection.release();
+    }
+}
 
   static async getByUser(userId) {
     const db = await getDb();
