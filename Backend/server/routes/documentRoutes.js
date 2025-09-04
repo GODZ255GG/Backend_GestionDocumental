@@ -57,8 +57,7 @@ router.get('/documents', authenticateJWT, documentController.getAll);
 // Get by ID
 router.get('/documents/:id', authenticateJWT, documentController.getById);
 
-// Descarga la última versión de un documento por su ID
-router.get('/documents/:documentoId/download', authenticateJWT, documentController.downloadLatestVersion);
+
 
 // Get versions
 router.get('/documents/:documentoId/versions', authenticateJWT, documentController.getVersions);
