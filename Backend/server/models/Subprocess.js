@@ -44,8 +44,8 @@ class Subprocess {
             const [rows] = await db.query(
                 `SELECT s.*, 
                 (SELECT COUNT(*) FROM Procedures WHERE SubprocessID = s.SubprocessID) AS procedureCount
-         FROM Subprocesses s
-         WHERE s.DepartmentID = ?`,
+                FROM Subprocesses s
+                WHERE s.DepartmentID = ?`,
                 [idNum]
             );
             return rows;
@@ -90,27 +90,43 @@ class Subprocess {
         }
     }
 
-    static async delete(id) {
-        try {
-            const idNum = await this.validateId(id);
-            const db = await getDb();
+  
+static async delete(id) {
+    let connection;
+    try {
+        const idNum = await this.validateId(id);
+        connection = await getDb().getConnection();
 
-            // Verificar si hay procedimientos asociados
-            const [procedures] = await db.query(
-                'SELECT COUNT(*) AS count FROM Procedures WHERE SubprocessID = ?',
-                [idNum]
-            );
+        await connection.beginTransaction();
 
-            if (procedures[0].count > 0) {
-                throw new Error('No se puede eliminar el subproceso porque tiene procedimientos asociados');
-            }
+        // 1. Obtener los procedimientos asociados al subproceso
+        const [procedures] = await connection.query(
+            'SELECT ProcedureID FROM Procedures WHERE SubprocessID = ?',
+            [idNum]
+        );
 
-            await db.query('DELETE FROM Subprocesses WHERE SubprocessID = ?', [idNum]);
-        } catch (error) {
-            console.error('Error in delete:', error);
-            throw error;
+        // 2. Eliminar referencias en ProcedureDocuments para esos procedimientos
+        if (procedures.length > 0) {
+            const procedureIds = procedures.map(p => p.ProcedureID);
+            await connection.query('DELETE FROM ProcedureDocuments WHERE ProcedureID IN (?)', [procedureIds]);
         }
+        
+        // 3. Eliminar los procedimientos asociados
+        await connection.query('DELETE FROM Procedures WHERE SubprocessID = ?', [idNum]);
+        
+        // 4. Eliminar el subproceso
+        await connection.query('DELETE FROM Subprocesses WHERE SubprocessID = ?', [idNum]);
+
+        await connection.commit();
+        return true;
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Error in delete:', error);
+        throw error;
+    } finally {
+        if (connection) connection.release();
     }
+}
 
     static async getProceduresBySubprocess(subprocessId) {
         try {
