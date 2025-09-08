@@ -1,28 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { check, validationResult } = require('express-validator');
+const { validationResult } = require('express-validator');
 const procedureController = require('../controllers/procedureController');
 const { authenticateJWT } = require('../middleware/auth');
+const { createProcedureValidator, updateProcedureValidator } = require('../validators/procedureValidator');
 
-const updateProcedureValidator = [
-    check('title').optional().notEmpty(),
-    check('description').optional(),
-    check('subprocessId').optional().isInt(),
-    check('status').optional().isIn(['Draft', 'Active', 'Pending', 'Archived']),
-
-    // Añade el middleware de manejo de errores
-    (req, res, next) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-        next();
-    }
-];
-
-router.post('/', authenticateJWT, procedureController.createProcedure);
+// La ruta POST ahora usa el validador
+router.post('/', authenticateJWT, createProcedureValidator, procedureController.createProcedure);
 router.get('/:id', authenticateJWT, procedureController.getProcedureById);
 router.get('/', authenticateJWT, procedureController.getAllProcedures);
+// La ruta PUT ahora usa el validador corregido
 router.put('/:id', authenticateJWT, updateProcedureValidator, procedureController.updateProcedure);
 router.delete('/:id', authenticateJWT, procedureController.deleteProcedure);
 router.get('/by-department/:id', authenticateJWT, procedureController.getProceduresByDepartment);

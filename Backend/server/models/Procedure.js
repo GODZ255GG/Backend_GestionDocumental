@@ -20,20 +20,25 @@ class Procedure {
         return idNum;
     }
 
-    static async create(title, description, subprocessId, responsibleId, createdBy, status = 'Created') {
-        const db = await getDb();
-        const normalizedStatus = statusMap[status.toLowerCase()] || status || 'Created';
-        if (!validStatuses.includes(normalizedStatus)) {
-            throw new Error('Invalid status value');
-        }
-        const [result] = await db.query(
-            `INSERT INTO Procedures 
-            (Title, Description, SubprocessID, ResponsibleID, Status, CreatedBy) 
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [title, description, subprocessId, responsibleId, normalizedStatus, createdBy]
-        );
-        return result.insertId;
+    static async create(title, description, subprocessId, responsibleId, createdBy, status) {
+    // Usa 'Created' como valor por defecto si el estado no se proporciona
+    const finalStatus = status || 'Created';
+
+    // Verifica que el estado es válido
+    const validStatuses = ['Created', 'In progress', 'Under review', 'Published', 'Archived'];
+    if (!validStatuses.includes(finalStatus)) {
+        throw new Error('Invalid status value');
     }
+
+    const db = await getDb();
+    const [result] = await db.query(
+        `INSERT INTO Procedures 
+        (Title, Description, SubprocessID, ResponsibleID, Status, CreatedBy) 
+        VALUES (?, ?, ?, ?, ?, ?)`,
+        [title, description, subprocessId, responsibleId, finalStatus, createdBy]
+    );
+    return result.insertId;
+}
 
     static async getById(id) {
         const db = await getDb();

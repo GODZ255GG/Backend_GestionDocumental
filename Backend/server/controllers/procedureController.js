@@ -16,19 +16,14 @@ async function getUserDepartment(userId) {
   return rows[0];
 }
 
-// Map de status español a ENUM inglés (para normalizar front input)
+// Mapa de status ENUM a ENUM (solo para normalización a mayúsculas si es necesario)
+// El front ya envía el ENUM en inglés, por lo que solo hay que asegurar la coincidencia.
 const statusMap = {
-  'creado': 'Created',
-  'en elaboración': 'In progress',
-  'en revisión': 'Under review',
-  'publicado': 'Published',
-  'archivado': 'Archived',
-  'Creado': 'Created',
-  'En elaboración': 'In progress',
-  'En Revisión': 'Under review',
-  'Publicado': 'Published',
-  'Archivado': 'Archived'
-  // Agrega variaciones lowercase si front envía así
+  'created': 'Created',
+  'in progress': 'In progress',
+  'under review': 'Under review',
+  'published': 'Published',
+  'archived': 'Archived',
 };
 
 const procedureController = {
@@ -41,10 +36,12 @@ const procedureController = {
       }
       const procedure = await Procedure.getById(procedureId);
       if (!procedure) return res.status(404).json({ message: 'Procedure not found' });
+      
       // permiso: solo responsable puede modificar (igual que en addDocumentToProcedure)
       if (procedure.ResponsibleID !== req.user.userId) {
         return res.status(403).json({ message: 'Unauthorized to modify this procedure' });
       }
+      
       // usa Document model para insertar la relación
       await Document.addToProcedure(procedureId, documentId);
       return res.status(201).json({ message: 'Document associated to procedure' });
@@ -56,9 +53,12 @@ const procedureController = {
 
   createProcedure: async (req, res) => {
     try {
-      const { title, description, subprocessId, status: inputStatus } = req.body;  // Recibe status del front
+      const { title, description, subprocessId, status } = req.body;
       const responsibleId = req.user.userId;
-      const normalizedStatus = statusMap[inputStatus.toLowerCase()] || 'Created';  // Map y default
+      
+      // El valor del select ya es el ENUM correcto. Solo se normaliza si es necesario.
+      const normalizedStatus = statusMap[status.toLowerCase()] || status || 'Created';
+      
       const id = await Procedure.create(title, description, subprocessId, responsibleId, responsibleId, normalizedStatus);
       res.status(201).json({ id, message: 'Procedure created successfully' });
     } catch (error) {
@@ -124,8 +124,11 @@ const procedureController = {
   updateProcedure: async (req, res) => {
     try {
       const { id } = req.params;
-      const { title, description, subprocessId, status: inputStatus } = req.body;
-      const normalizedStatus = statusMap[inputStatus.toLowerCase()] || 'In progress';  // Map y default para update
+      const { title, description, subprocessId, status } = req.body;
+      
+      // El valor del select ya es el ENUM correcto. Solo se normaliza si es necesario.
+      const normalizedStatus = statusMap[status.toLowerCase()] || status;
+      
       await Procedure.update(
         id,
         title,
@@ -157,7 +160,7 @@ const procedureController = {
       if (isNaN(departmentId) || !Number.isInteger(departmentId)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid department ID. Must be an integer.'
+          message: 'Invalid department ID. Must be an integer'
         });
       }
       const userDepartment = await getUserDepartment(req.user.userId);
