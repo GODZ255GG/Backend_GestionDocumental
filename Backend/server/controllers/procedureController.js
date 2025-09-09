@@ -189,24 +189,42 @@ const procedureController = {
     }
   },
 
-  getProceduresByUser: async (req, res) => {
-    try {
-      const userId = req.user.userId;
-      const procedures = await Procedure.getByUser(userId);
-      res.json({
-        success: true,
-        data: procedures,
-        count: procedures.length
-      });
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error getting user procedures',
-        error: error.message
-      });
-    }
+async getProceduresByUser(req, res) {
+  try {
+    const userId = req.user.userId;
+    const db = await getDb();
+
+    const [rows] = await db.query(
+      `SELECT
+         p.ProcedureID,
+         p.Title,
+         p.Description,
+         p.SubprocessID,
+         sp.Name AS SubProcess,            -- <- nombre del subproceso
+         p.Status,
+         p.ResponsibleID,
+         p.CreatedBy,
+         p.ModifiedBy,
+         p.CreatedAt,
+         p.LastModified AS UpdatedAt
+       FROM Procedures p
+       LEFT JOIN Subprocesses sp
+              ON sp.SubprocessID = p.SubprocessID
+       WHERE p.ResponsibleID = ? OR p.CreatedBy = ?
+       ORDER BY p.CreatedAt DESC`,
+      [userId, userId]
+    );
+
+    res.json({ success: true, data: rows, count: rows.length });
+  } catch (error) {
+    console.error('Error getProceduresByUser:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting user procedures',
+      error: error.message
+    });
   }
+}
 };
 
 module.exports = procedureController;
