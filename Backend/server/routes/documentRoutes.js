@@ -57,8 +57,6 @@ router.get('/documents', authenticateJWT, documentController.getAll);
 // Get by ID
 router.get('/documents/:id', authenticateJWT, documentController.getById);
 
-
-
 // Get versions
 router.get('/documents/:documentoId/versions', authenticateJWT, documentController.getVersions);
 

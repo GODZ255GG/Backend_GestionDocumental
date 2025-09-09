@@ -126,10 +126,8 @@ viewDocument: async (req, res) => {
     const version = await Document.getVersionById(versionId);
     if (!version) return res.status(404).json({ message: 'Version not found' });
 
-    // 1) MimeType real (si falta, usa octet-stream)
     const mime = version.MimeType || 'application/octet-stream';
 
-    // 2) Extensión por mimetype (si no se reconoce, sin extensión)
     const ext = (() => {
       switch ((mime || '').toLowerCase()) {
         case 'application/pdf': return '.pdf';
@@ -144,26 +142,19 @@ viewDocument: async (req, res) => {
       }
     })();
 
-    // 3) Nombre base: intenta usar version.Name si existiera; si no, algo genérico
     const rawBase = version.Name || `documento_v${version.VersionNumber || ''}`;
-    // Sanea caracteres problemáticos para cabecera HTTP
     const safeBase = String(rawBase).replace(/[\\\/:*?"<>|\r\n]+/g, '').trim() || 'archivo';
 
-    // 4) Filename final
     const filename = `${safeBase}${ext}`;
 
-    // 5) Cabeceras
     res.setHeader('Content-Type', mime);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
-    // Exponer cabeceras no simples para que el front pueda leer filename/mime si usa fetch+blob
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type');
 
-    // (Opcional) Content-Length si tienes un Buffer
     if (version.File && Buffer.isBuffer(version.File)) {
       res.setHeader('Content-Length', version.File.length);
     }
 
-    // 6) Enviar binario
     res.send(version.File);
   } catch (error) {
     console.error('downloadVersion error:', error);
