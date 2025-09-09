@@ -38,22 +38,22 @@ const Document = {
       VALUES (?, ?)
     `;
     await db.query(sql, [procedureId, documentId]);
-    console.log('Associated documentId:', documentId, 'to procedureId:', procedureId);  // Log para debug
+    console.log('Associated documentId:', documentId, 'to procedureId:', procedureId);
     return;
   },
 
-
   getLatestVersion: async (documentId) => {
-      const db = await getDb();
-      const [rows] = await db.query(
-          `SELECT dv.File, d.Name, dv.VersionNumber, dv.MimeType FROM DocumentVersions dv
-          JOIN Documents d ON dv.DocumentID = d.DocumentID
-          WHERE dv.DocumentID = ?
-          ORDER BY dv.UploadedAt DESC
-          LIMIT 1`,
-          [documentId]
-      );
-      return rows[0] || null;
+    const db = await getDb();
+    const [rows] = await db.query(
+      `SELECT dv.File, d.Name, dv.VersionNumber, dv.MimeType
+       FROM DocumentVersions dv
+       JOIN Documents d ON dv.DocumentID = d.DocumentID
+       WHERE dv.DocumentID = ?
+       ORDER BY dv.UploadedAt DESC
+       LIMIT 1`,
+      [documentId]
+    );
+    return rows[0] || null;
   },
 
   getByProcedure: async (procedureId) => {
@@ -83,13 +83,23 @@ const Document = {
 
   getVersions: async (documentId) => {
     const db = await getDb();
-    const [rows] = await db.query('SELECT * FROM DocumentVersions WHERE DocumentID = ? ORDER BY UploadedAt DESC', [documentId]);
+    const [rows] = await db.query(
+      'SELECT * FROM DocumentVersions WHERE DocumentID = ? ORDER BY UploadedAt DESC',
+      [documentId]
+    );
     return rows;
   },
 
+  // 🔽 CORREGIDO: trae también el nombre del documento desde Documents
   getVersionById: async (versionId) => {
     const db = await getDb();
-    const [rows] = await db.query('SELECT * FROM DocumentVersions WHERE VersionID = ?', [versionId]);
+    const [rows] = await db.query(
+      `SELECT dv.*, d.Name
+       FROM DocumentVersions dv
+       JOIN Documents d ON dv.DocumentID = d.DocumentID
+       WHERE dv.VersionID = ?`,
+      [versionId]
+    );
     return rows[0] || null;
   },
 

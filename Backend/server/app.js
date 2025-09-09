@@ -29,8 +29,14 @@ const corsOptions = {
   },
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   credentials: true,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
+
+  // 🔑 ESTO ES LO NUEVO:
+  exposedHeaders: ['Content-Disposition', 'Content-Type']
 };
+
+app.use(cors(corsOptions));
+
 
 app.use(cors(corsOptions));
 app.use(bodyParser.json());

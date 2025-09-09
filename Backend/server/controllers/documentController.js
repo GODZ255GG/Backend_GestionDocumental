@@ -1,6 +1,12 @@
 const { validationResult } = require('express-validator');
 const Document = require('../models/Document');
 
+// Helper para sanitizar el nombre del archivo
+function sanitizeFilename(filename) {
+    // Elimina caracteres no válidos para nombres de archivo
+    return filename.replace(/[/\\?%*:|"<>]/g, '');
+}
+
 const documentController = {
   getAll: async (req, res) => {
     try {
@@ -38,19 +44,29 @@ const documentController = {
     }
   },
 
-
-viewDocument: async (req, res) => {
+  viewDocument: async (req, res) => {
     try {
         const { documentoId } = req.params;
-        const latestVersion = await Document.getLatestVersion(documentoId);
-
-        if (!latestVersion) {
-            return res.status(404).json({ message: 'Documento o versión no encontrada' });
+        const doc = await Document.getById(documentoId);
+        if (!doc) {
+            return res.status(404).json({ message: 'Documento no encontrado' });
         }
 
-        // Configura la cabecera para que el navegador lo muestre (inline)
-        res.setHeader('Content-Type', latestVersion.MimeType || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `inline; filename="${latestVersion.Name}"`);
+        const latestVersion = await Document.getLatestVersion(documentoId);
+        if (!latestVersion) {
+            return res.status(404).json({ message: 'Versión del documento no encontrada' });
+        }
+
+        const filename = sanitizeFilename(doc.Name);
+        const mimeType = latestVersion.MimeType || 'application/octet-stream';
+        
+        // Determina si el archivo debe visualizarse (inline) o descargarse (attachment)
+        const contentDisposition = (mimeType.startsWith('image/') || mimeType === 'application/pdf')
+            ? 'inline' 
+            : 'attachment';
+        
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `${contentDisposition}; filename="${filename}"`);
         res.send(latestVersion.File);
 
     } catch (error) {
@@ -59,34 +75,34 @@ viewDocument: async (req, res) => {
     }
 },
 
-
   uploadVersion: async (req, res) => {
-  try {
-    const { documentoId } = req.params;
-    const doc = await Document.getById(documentoId);
-    if (!doc) return res.status(404).json({ message: 'Document not found' });
+    try {
+      const { documentoId } = req.params;
+      const doc = await Document.getById(documentoId);
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
 
-    if (!req.file) return res.status(400).json({ message: 'File is required...' });
+      if (!req.file) return res.status(400).json({ message: 'File is required...' });
 
-    const fileBuffer = req.file.buffer;
-    const mimetype = req.file.mimetype; // Get the mimetype from the request
+      const fileBuffer = req.file.buffer;
+      const mimetype = req.file.mimetype;
+      const originalName = req.file.originalname;
 
-    const versions = await Document.getVersions(documentoId);
-    const lastVersion = versions.length ? versions[0].VersionNumber : 0;
-    const nextVersion = lastVersion + 1;
+      const versions = await Document.getVersions(documentoId);
+      const lastVersion = versions.length ? versions[0].VersionNumber : 0;
+      const nextVersion = lastVersion + 1;
 
-    await Document.addVersion(documentoId, fileBuffer, nextVersion, mimetype); // Pass the mimetype
+      await Document.addVersion(documentoId, fileBuffer, nextVersion, mimetype, originalName);
 
-    res.status(201).json({ message: 'New version uploaded', version: nextVersion });
-  } catch (error) {
-      if (error.message === 'INVALID_FILE_TYPE') {
-        return res.status(400).json({ message: 'Only Word, PDF and image files are allowed (≤10MB).' });
-      }
-      if (error.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: 'Max file size is 10MB.' });
-      }
-      console.error('uploadVersion error:', error);
-      res.status(500).json({ message: 'Error uploading version' });
+      res.status(201).json({ message: 'New version uploaded', version: nextVersion });
+    } catch (error) {
+        if (error.message === 'INVALID_FILE_TYPE') {
+            return res.status(400).json({ message: 'Only Word, PDF and image files are allowed (≤10MB).' });
+        }
+        if (error.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ message: 'Max file size is 10MB.' });
+        }
+        console.error('uploadVersion error:', error);
+        res.status(500).json({ message: 'Error uploading version' });
     }
   },
 
@@ -103,73 +119,57 @@ viewDocument: async (req, res) => {
 
   downloadLatestVersion: async (req, res) => {
     try {
-        const { documentoId } = req.params;
-        const latestVersion = await Document.getLatestVersion(documentoId);
+      const { documentoId } = req.params;
+      const doc = await Document.getById(documentoId);
+      if (!doc) {
+        return res.status(404).json({ message: 'Documento no encontrado' });
+      }
 
-        if (!latestVersion) {
-            return res.status(404).json({ message: 'Documento o versión no encontrada' });
-        }
+      const latestVersion = await Document.getLatestVersion(documentoId);
+      if (!latestVersion) {
+        return res.status(404).json({ message: 'Versión del documento no encontrada' });
+      }
 
-        res.setHeader('Content-Type', latestVersion.MimeType || 'application/octet-stream');
-        res.setHeader('Content-Disposition', `attachment; filename="${latestVersion.Name}"`);
-        res.send(latestVersion.File);
+      const filename = sanitizeFilename(doc.Name);
+
+      res.setHeader('Content-Type', latestVersion.MimeType || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(latestVersion.File);
 
     } catch (error) {
-        console.error('Error downloading latest version:', error);
-        res.status(500).json({ message: 'Error del servidor al descargar el documento' });
+      console.error('Error downloading latest version:', error);
+      res.status(500).json({ message: 'Error del servidor al descargar el documento' });
     }
-},
+  },
 
   downloadVersion: async (req, res) => {
-  try {
-    const { versionId } = req.params;
-    const version = await Document.getVersionById(versionId);
-    if (!version) return res.status(404).json({ message: 'Version not found' });
-
-    // 1) MimeType real (si falta, usa octet-stream)
-    const mime = version.MimeType || 'application/octet-stream';
-
-    // 2) Extensión por mimetype (si no se reconoce, sin extensión)
-    const ext = (() => {
-      switch ((mime || '').toLowerCase()) {
-        case 'application/pdf': return '.pdf';
-        case 'application/msword': return '.doc';
-        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': return '.docx';
-        case 'image/jpeg':
-        case 'image/jpg': return '.jpg';
-        case 'image/png': return '.png';
-        case 'image/bmp': return '.bmp';
-        case 'image/webp': return '.webp';
-        default: return '';
+    try {
+      const { versionId } = req.params;
+      const version = await Document.getVersionById(versionId);
+      if (!version) return res.status(404).json({ message: 'Version not found' });
+      
+      const doc = await Document.getById(version.DocumentID);
+      if (!doc) {
+        return res.status(404).json({ message: 'Documento no encontrado' });
       }
-    })();
 
-    // 3) Nombre base: intenta usar version.Name si existiera; si no, algo genérico
-    const rawBase = version.Name || `documento_v${version.VersionNumber || ''}`;
-    // Sanea caracteres problemáticos para cabecera HTTP
-    const safeBase = String(rawBase).replace(/[\\\/:*?"<>|\r\n]+/g, '').trim() || 'archivo';
+      const mime = version.MimeType || 'application/octet-stream';
+      const filename = sanitizeFilename(doc.Name);
 
-    // 4) Filename final
-    const filename = `${safeBase}${ext}`;
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type');
 
-    // 5) Cabeceras
-    res.setHeader('Content-Type', mime);
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
-    // Exponer cabeceras no simples para que el front pueda leer filename/mime si usa fetch+blob
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type');
+      if (version.File && Buffer.isBuffer(version.File)) {
+        res.setHeader('Content-Length', version.File.length);
+      }
 
-    // (Opcional) Content-Length si tienes un Buffer
-    if (version.File && Buffer.isBuffer(version.File)) {
-      res.setHeader('Content-Length', version.File.length);
+      res.send(version.File);
+    } catch (error) {
+      console.error('downloadVersion error:', error);
+      res.status(500).json({ message: 'Error downloading version' });
     }
-
-    // 6) Enviar binario
-    res.send(version.File);
-  } catch (error) {
-    console.error('downloadVersion error:', error);
-    res.status(500).json({ message: 'Error downloading version' });
-  }
-},
+  },
 
   delete: async (req, res) => {
     try {
